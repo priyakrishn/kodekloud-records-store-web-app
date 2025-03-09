@@ -1,0 +1,80 @@
+name: Release Pipeline
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          pytest tests/
+
+  docker-build:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get version from Git tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+
+      - name: Build and tag Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }} .
+          docker tag ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
+      
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }}
+          docker push ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
+
+
+#  deploy:
+#    needs: docker-build
+#    runs-on: ubuntu-latest
+
+ #   steps:
+ #     - name: Deploy to production (simulation)
+ #       run: |
+ #         echo "Deploying image ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ github.sha }}"
+          # This is where we would deploy the image to Kubernetes or another environment
+
+ #     - name: Run post-deployment tests
+ #       run: |
+ #         # Simulated test failure (replace with actual health check)
+ #         echo "Running post-deployment health check..."
+ #         curl -f http://your-service-url/health || exit 1
+
+ #     - name: Rollback if deployment fails
+ #       if: failure()
+ #       run: |
+ #         echo "Rolling back to previous version..."
+ #         docker pull ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
+ #         # Deploy the last known good version

@@ -1,0 +1,149 @@
+services:
+  api:
+    image: jakepage91/kodekloud-record-store-app:latest
+    container_name: kodekloud-record-store-api
+    restart: always
+    depends_on:
+      - db
+      - rabbitmq
+      - jaeger
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: kodekloud_records
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq
+      PYTHONPATH: /app/src
+      OTEL_SERVICE_NAME: kodekloud-record-store-api
+    networks:
+      - kodekloud-record-store-net
+
+  worker:
+    image: jakepage91/kodekloud-record-store-app:latest
+    container_name: kodekloud-record-store-worker
+    command: ["celery", "-A", "api.worker", "worker", "--loglevel=info"]
+    restart: always
+    depends_on:
+      - rabbitmq
+      - db
+      - pushgateway
+      - jaeger
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: kodekloud_records
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq
+      PROMETHEUS_PUSHGATEWAY: pushgateway:9091
+      PYTHONPATH: /app/src
+      OTEL_SERVICE_NAME: kodekloud-record-store-worker
+    networks:
+      - kodekloud-record-store-net
+
+  db:
+    image: postgres:15
+    container_name: kodekloud-record-store-db
+    restart: always
+    environment:
+      POSTGRES_DB: kodekloud_records
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kodekloud-record-store-net
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: kodekloud-record-store-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - kodekloud-record-store-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: kodekloud-record-store-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - kodekloud-record-store-net
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: kodekloud-record-store-pushgateway
+    restart: always
+    ports:
+      - "9091:9091"
+    networks:
+      - kodekloud-record-store-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: kodekloud-record-store-grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../config/monitoring/grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - kodekloud-record-store-net
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: kodekloud-record-store-alertmanager
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - kodekloud-record-store-net
+
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    container_name: kodekloud-record-store-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - kodekloud-record-store-net
+
+networks:
+  kodekloud-record-store-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
