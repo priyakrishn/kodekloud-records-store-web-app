@@ -97,20 +97,22 @@ services:
       - kodekloud-record-store-net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.5.1
     container_name: kodekloud-record-store-grafana
     restart: always
     ports:
       - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ../config/monitoring/grafana-provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-provisioning:/etc/grafana/provisioning
     networks:
       - kodekloud-record-store-net
+    depends_on:
+      - prometheus
+      - loki
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -137,6 +139,31 @@ services:
     networks:
       - kodekloud-record-store-net
 
+  loki:
+    image: grafana/loki:2.8.0
+    container_name: kodekloud-record-store-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/logging/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/tmp/loki
+      - loki_wal:/tmp/wal
+    command: -config.file=/etc/loki/local-config.yaml
+    user: "0"
+    networks:
+      - kodekloud-record-store-net
+
+  fluent-bit:
+    image: fluent/fluent-bit:1.9
+    container_name: kodekloud-record-store-fluent-bit
+    volumes:
+      - ./monitoring/logging/fluent-bit-config.yaml:/fluent-bit/etc/fluent-bit.conf
+      - /var/log:/var/log
+    depends_on:
+      - loki
+    networks:
+      - kodekloud-record-store-net
+
 networks:
   kodekloud-record-store-net:
     driver: bridge
@@ -146,4 +173,6 @@ volumes:
   rabbitmq_data:
   prometheus_data:
   grafana_data:
+  loki_data:
+  loki_wal:
 
