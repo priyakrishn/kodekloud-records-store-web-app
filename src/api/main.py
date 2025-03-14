@@ -106,6 +106,12 @@ async def metrics_middleware(request: Request, call_next):
 async def root():
     return {"message": "KodeKloud Record Store API is running!"}
 
+# Students will add the health check endpoint here
+# @app.get("/health")
+# async def health_check():
+#     # This is a simple health check that could be expanded to check dependencies
+#     return {"status": "healthy", "version": "1.0.0"}
+
 @app.get("/trace-test")
 async def trace_test():
     tracer = get_tracer(__name__)
