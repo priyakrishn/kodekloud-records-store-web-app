@@ -1,10 +1,18 @@
-name: Release Pipeline
+name: Secure Release Pipeline
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types: [closed]
     branches:
       - main
+
+permissions:
+  contents: read  
+  packages: write  
+  id-token: write  
 
 jobs:
   build-and-test:
@@ -25,6 +33,12 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
 
+      - name: Run security audit (pip-audit)
+        run: |
+          source venv/bin/activate
+          pip install pip-audit
+          pip-audit --strict
+
       - name: Run tests
         run: |
           source venv/bin/activate
@@ -38,18 +52,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Generate SBOM
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+          syft . -o cyclonedx-json > sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: sbom.json
+
       - name: Get version from Git tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        run: echo "${{ secrets.REGISTRY_PAT }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
 
       - name: Build and tag Docker image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }} .
           docker tag ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
-      
+
+      - name: Scan for vulnerabilities (Grype)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh
+          grype ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }} --fail-on high
+
       - name: Push Docker image
         run: |
           docker push ghcr.io/${{ github.repository }}/kodekloud-record-store-api:${{ env.VERSION }}
@@ -85,9 +115,9 @@ jobs:
           echo "Checking health of Production..."
           curl -f http://your-prod-service-url/health || exit 1
 
-#      - name: Rollback if deployment fails
-#        if: failure()
-#        run: |
-#          echo "Rolling back to previous version..."
-#          docker pull ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
-#          # Deploy the last known good version
+      - name: Rollback if deployment fails
+        if: failure()
+        run: |
+          echo "Rolling back to previous version..."
+          docker pull ghcr.io/${{ github.repository }}/kodekloud-record-store-api:latest
+          # Deploy the last known good version

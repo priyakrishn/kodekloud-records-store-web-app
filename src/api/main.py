@@ -33,24 +33,24 @@ FastAPIInstrumentor.instrument_app(app)
 SQLAlchemyInstrumentor().instrument(engine=engine)
 
 # Prometheus Metrics
-REQUEST_COUNT = Counter(
-    "http_requests_total", 
-    "Total HTTP Requests",
-    ["method", "endpoint", "status_code"]
-)
+#REQUEST_COUNT = Counter(
+#    "http_requests_total", 
+#    "Total HTTP Requests",
+#    ["method", "endpoint", "status_code"]
+#)
 
-REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds",
-    "HTTP Request Duration in seconds",
-    ["method", "endpoint"],
-    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
-)
+#REQUEST_DURATION = Histogram(
+#    "http_request_duration_seconds",
+#    "HTTP Request Duration in seconds",
+#    ["method", "endpoint"],
+#    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+#)
 
-ERROR_COUNT = Counter(
-    "http_request_errors_total",
-    "Total HTTP Request Errors",
-    ["method", "endpoint", "error_type"]
-)
+#ERROR_COUNT = Counter(
+#    "http_request_errors_total",
+#    "Total HTTP Request Errors",
+#    ["method", "endpoint", "error_type"]
+#)
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -97,9 +97,10 @@ async def metrics_middleware(request: Request, call_next):
         # Re-raise the exception
         raise e
 
-@app.get("/metrics")
-async def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+# @app.get("/metrics")
+#async def metrics():
+#    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/")
 async def root():
