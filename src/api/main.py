@@ -32,13 +32,12 @@ setup_telemetry()
 FastAPIInstrumentor.instrument_app(app)
 SQLAlchemyInstrumentor().instrument(engine=engine)
 
-# Prometheus Metrics
+# Uncomment to add the metrics endpoint here
 #REQUEST_COUNT = Counter(
 #    "http_requests_total", 
 #    "Total HTTP Requests",
 #    ["method", "endpoint", "status_code"]
 #)
-
 #REQUEST_DURATION = Histogram(
 #    "http_request_duration_seconds",
 #    "HTTP Request Duration in seconds",
@@ -97,20 +96,19 @@ async def metrics_middleware(request: Request, call_next):
         # Re-raise the exception
         raise e
 
-
-# @app.get("/metrics")
-#async def metrics():
-#    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
 @app.get("/")
 async def root():
     return {"message": "KodeKloud Record Store API is running!"}
 
-# Students will add the health check endpoint here
-# @app.get("/health")
-# async def health_check():
-#     # This is a simple health check that could be expanded to check dependencies
-#     return {"status": "healthy", "version": "1.0.0"}
+# Uncomment to add the metrics endpoint here
+#@app.get("/metrics")
+#async def metrics():
+#    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+# Uncomment to add the health check endpoint here
+#@app.get("/health")
+#async def health_check():
+#    return {"status": "healthy", "version": "1.0.0"}
 
 @app.get("/trace-test")
 async def trace_test():

@@ -1,6 +1,8 @@
 services:
   api:
-    image: jakepage91/kodekloud-record-store-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: kodekloud-record-store-api
     restart: always
     depends_on:
@@ -21,7 +23,9 @@ services:
       - kodekloud-record-store-net
 
   worker:
-    image: jakepage91/kodekloud-record-store-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: kodekloud-record-store-worker
     command: ["celery", "-A", "api.worker", "worker", "--loglevel=info"]
     restart: always
@@ -76,8 +80,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - ./config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -107,7 +111,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana-provisioning:/etc/grafana/provisioning
+      - ./config/monitoring/grafana-provisioning:/etc/grafana/provisioning
     networks:
       - kodekloud-record-store-net
     depends_on:
@@ -121,7 +125,18 @@ services:
     ports:
       - "9093:9093"
     volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./config/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - kodekloud-record-store-net
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: kodekloud-record-store-blackbox-exporter
+    restart: always
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./config/monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml
     networks:
       - kodekloud-record-store-net
 
@@ -145,7 +160,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./monitoring/logging/loki-config.yaml:/etc/loki/local-config.yaml
+      - ./config/monitoring/logging/loki-config.yaml:/etc/loki/local-config.yaml
       - loki_data:/tmp/loki
       - loki_wal:/tmp/wal
     command: -config.file=/etc/loki/local-config.yaml
@@ -157,7 +172,7 @@ services:
     image: fluent/fluent-bit:1.9
     container_name: kodekloud-record-store-fluent-bit
     volumes:
-      - ./monitoring/logging/fluent-bit-config.yaml:/fluent-bit/etc/fluent-bit.conf
+      - ./config/monitoring/logging/fluent-bit-config.yaml:/fluent-bit/etc/fluent-bit.conf
       - /var/log:/var/log
     depends_on:
       - loki

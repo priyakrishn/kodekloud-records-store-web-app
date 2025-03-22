@@ -1,5 +1,7 @@
 apiVersion: 1
 
+
+# Uncomment to add the Prometheus datasource to Grafana
 #datasources:
 #  - name: Prometheus
 #    type: prometheus
