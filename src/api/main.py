@@ -3,24 +3,65 @@ from api.routes import router
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
 from starlette.responses import Response
 import logging
+import json
+import time
 from api import models  # Ensure models are imported
 from api.database import engine
-import time
 from api.telemetry import setup_telemetry, get_tracer
+from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 # Initialize Logging First
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
+
+# Create structured logger
+class StructuredLogger:
+    def __init__(self, name):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(logging.INFO)
+    
+    def info(self, msg, **kwargs):
+        # Add trace context
+        span = trace.get_current_span()
+        span_context = span.get_span_context()
+        
+        # Format as JSON
+        log_data = {
+            "message": msg,
+            "level": "INFO",
+            "trace_id": format(span_context.trace_id, "032x") if span_context.is_valid else None,
+            "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
+            **kwargs
+        }
+        self.logger.info(json.dumps(log_data))
+    
+    def error(self, msg, **kwargs):
+        # Add trace context
+        span = trace.get_current_span()
+        span_context = span.get_span_context()
+        
+        # Format as JSON
+        log_data = {
+            "message": msg,
+            "level": "ERROR",
+            "trace_id": format(span_context.trace_id, "032x") if span_context.is_valid else None,
+            "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
+            **kwargs
+        }
+        self.logger.error(json.dumps(log_data))
+
+# Replace logger with structured logger
+structured_logger = StructuredLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI()
 
 # Auto-create tables on startup
-logger.info("Checking if database tables exist or need to be created...")
+structured_logger.info("database_init", status="starting", action="check_tables")
 models.Base.metadata.create_all(bind=engine)
-logger.info("✅ Database tables checked and initialized.")
+structured_logger.info("database_init", status="complete", action="tables_created")
 
 # Register API routes
 app.include_router(router)
@@ -32,24 +73,24 @@ setup_telemetry()
 FastAPIInstrumentor.instrument_app(app)
 SQLAlchemyInstrumentor().instrument(engine=engine)
 
-# Uncomment to add the metrics endpoint here
-#REQUEST_COUNT = Counter(
-#    "http_requests_total", 
-#    "Total HTTP Requests",
-#    ["method", "endpoint", "status_code"]
-#)
-#REQUEST_DURATION = Histogram(
-#    "http_request_duration_seconds",
-#    "HTTP Request Duration in seconds",
-#    ["method", "endpoint"],
-#    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
-#)
+# Prometheus metrics 
+REQUEST_COUNT = Counter(
+    "http_requests_total", 
+    "Total HTTP Requests",
+    ["method", "endpoint", "status_code"]
+)
+REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds",
+    "HTTP Request Duration in seconds",
+    ["method", "endpoint"],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+)
 
-#ERROR_COUNT = Counter(
-#    "http_request_errors_total",
-#    "Total HTTP Request Errors",
-#    ["method", "endpoint", "error_type"]
-#)
+ERROR_COUNT = Counter(
+    "http_request_errors_total",
+    "Total HTTP Request Errors",
+    ["method", "endpoint", "error_type"]
+)
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -75,6 +116,15 @@ async def metrics_middleware(request: Request, call_next):
             endpoint=endpoint
         ).observe(duration)
         
+        # Structured logging for each request
+        structured_logger.info(
+            "request_processed",
+            method=method,
+            endpoint=endpoint,
+            status_code=status_code,
+            duration_ms=round(duration * 1000, 2)
+        )
+        
         # Track HTTP errors (4xx, 5xx) separately
         if status_code >= 400:
             ERROR_COUNT.labels(
@@ -82,6 +132,13 @@ async def metrics_middleware(request: Request, call_next):
                 endpoint=endpoint,
                 error_type=f"http_{status_code}"
             ).inc()
+            structured_logger.error(
+                "http_error",
+                method=method,
+                endpoint=endpoint,
+                status_code=status_code,
+                duration_ms=round(duration * 1000, 2)
+            )
         
         return response
         
@@ -93,6 +150,14 @@ async def metrics_middleware(request: Request, call_next):
             error_type=type(e).__name__
         ).inc()
         
+        structured_logger.error(
+            "request_failed",
+            method=method,
+            endpoint=endpoint,
+            error=str(e),
+            error_type=type(e).__name__
+        )
+        
         # Re-raise the exception
         raise e
 
@@ -100,22 +165,37 @@ async def metrics_middleware(request: Request, call_next):
 async def root():
     return {"message": "KodeKloud Record Store API is running!"}
 
-# Uncomment to add the metrics endpoint here
-#@app.get("/metrics")
-#async def metrics():
-#    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-# Uncomment to add the health check endpoint here
-#@app.get("/health")
-#async def health_check():
-#    return {"status": "healthy", "version": "1.0.0"}
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "version": "1.0.0"}
 
 @app.get("/trace-test")
 async def trace_test():
     tracer = get_tracer(__name__)
     with tracer.start_as_current_span("test-span") as span:
         span.set_attribute("test.attribute", "test-value")
-        logger.info("Creating test span for Jaeger")
+        span.set_attribute("custom.operation", "trace-test")
+        structured_logger.info("trace_test_executed", span_name="test-span", service="api")
         return {"message": "Test span created"}
 
-logger.info("🚀 KodeKloud Record Store API started successfully and is ready to accept requests.")
+@app.get("/error-test")
+async def error_test():
+    tracer = get_tracer(__name__)
+    with tracer.start_as_current_span("error-span") as span:
+        span.set_attribute("error", True)
+        span.set_attribute("custom.operation", "error-simulation")
+        structured_logger.error("error_test_executed", 
+                                span_name="error-span", 
+                                service="api", 
+                                error_type="SimulatedError",
+                                error_reason="Testing error logging and tracing")
+        # Simulate an HTTP 500 error
+        return Response(content=json.dumps({"error": "Simulated error"}), 
+                       status_code=500, 
+                       media_type="application/json")
+
+structured_logger.info("api_startup", status="complete", version="1.0.0")

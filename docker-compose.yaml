@@ -82,6 +82,7 @@ services:
     volumes:
       - ./config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./config/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - ./config/monitoring/sli_rules.yml:/etc/prometheus/sli_rules.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
