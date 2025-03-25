@@ -1,34 +1,18 @@
 [SERVICE]
-    Flush        5
+    Flush        1
     Daemon       Off
     Log_Level    info
 
 [INPUT]
-    Name        tail
-    Path        /var/log/containers/kodekloud-record-store-api*.log
-    Parser      docker
-    Tag         kube.kodekloud-record-store-api
-    Mem_Buf_Limit 5MB
-
-[INPUT]
-    Name        tail
-    Path        /var/log/containers/kodekloud-record-store-worker*.log
-    Parser      docker
-    Tag         kube.kodekloud-record-store-worker
-    Mem_Buf_Limit 5MB
-
-[FILTER]
-    Name        kubernetes
-    Match       kube.*
-    Merge_Log   On
-    Keep_Log    Off
-    K8S-Logging.Parser On
-    K8S-Logging.Exclude On
+    Name             forward
+    Listen           0.0.0.0
+    Port             24224
+    Tag              docker
 
 [OUTPUT]
-    Name        loki
-    Match       *
-    Host        loki
-    Port        3100
-    Labels      job=fluentbit
-    Label_Keys  $tag
+    Name             loki
+    Match            *
+    Host             loki
+    Port             3100
+    Labels           job=fluentbit, container_name=kodekloud-record-store-api
+    Line_Format      json

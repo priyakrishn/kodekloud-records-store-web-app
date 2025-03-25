@@ -25,7 +25,7 @@ class StructuredLogger:
         span = trace.get_current_span()
         span_context = span.get_span_context()
         
-        # Format as JSON
+        # Format as JSON directly
         log_data = {
             "message": msg,
             "level": "INFO",
@@ -33,14 +33,15 @@ class StructuredLogger:
             "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
             **kwargs
         }
-        self.logger.info(json.dumps(log_data))
+        # Use dict instead of string
+        self.logger.info(log_data)
     
     def error(self, msg, **kwargs):
         # Add trace context
         span = trace.get_current_span()
         span_context = span.get_span_context()
         
-        # Format as JSON
+        # Format as JSON directly
         log_data = {
             "message": msg,
             "level": "ERROR",
@@ -48,7 +49,8 @@ class StructuredLogger:
             "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
             **kwargs
         }
-        self.logger.error(json.dumps(log_data))
+        # Use dict instead of string
+        self.logger.error(log_data)
 
 # Use structured logger
 logger = StructuredLogger(__name__)

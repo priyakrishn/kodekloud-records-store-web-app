@@ -1,118 +1,84 @@
-# KodeKloud Record Store Web App
+# KodeKloud Records Store
 
-## Overview
+This is a sample application for demonstrating observability concepts including metrics, logs, and traces.
 
-A modern, microservices-based web application for a record store, featuring a FastAPI backend, Celery workers, and comprehensive monitoring. This application demonstrates best practices for building scalable, observable Python applications.
-
-## Features
-
-- **FastAPI Backend**: RESTful API for managing record store inventory and orders
-- **Celery Workers**: Asynchronous task processing for order fulfillment
-- **PostgreSQL Database**: Persistent storage for product and order data
-- **RabbitMQ**: Message broker for task queue management
-- **Comprehensive Monitoring**:
-  - Prometheus for metrics collection
-  - Grafana for visualization
-  - Jaeger for distributed tracing
-  - Structured logging
-
-## Architecture
+## Project Structure
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   FastAPI   │────▶│   RabbitMQ  │────▶│    Celery   │
-│     API     │     │   Message   │     │   Workers   │
-└─────────────┘     │    Broker   │     └─────────────┘
-       │            └─────────────┘            │
-       │                                        │
-       ▼                                        ▼
-┌─────────────┐                        ┌─────────────┐
-│  PostgreSQL │◀───────────────────────│  Prometheus │
-│   Database  │                        │   Metrics   │
-└─────────────┘                        └─────────────┘
-                                              │
-┌─────────────┐     ┌─────────────┐          │
-│   Grafana   │◀────│    Jaeger   │◀─────────┘
-│  Dashboards │     │   Tracing   │
-└─────────────┘     └─────────────┘
+kodekloud-records-store-web-app/
+├── src/                    # Application source code
+│   ├── api/                # API implementation
+│   └── ...
+├── config/                 # Configuration files
+│   ├── monitoring/         # Observability configuration
+│   │   ├── grafana-provisioning/  # Grafana dashboards and datasources
+│   │   ├── logging/        # Loki and Fluent Bit configs
+│   │   ├── prometheus.yml  # Prometheus configuration
+│   │   ├── alert_rules.yml # Prometheus alert rules
+│   │   ├── sli_rules.yml   # Service Level Indicator definitions
+│   │   └── ...
+│   └── env/                # Environment-specific configs
+├── scripts/                # Utility scripts
+│   └── generate_logs.sh    # Script to generate test logs and traces
+├── tracing/                # OpenTelemetry tracing configs
+├── observability-lab.md    # Lab instructions and exercises
+├── docker-compose.yaml     # Docker Compose configuration
+└── Dockerfile              # Application Dockerfile
 ```
-
 
 ## Getting Started
 
-### Prerequisites
+1. Start the application:
 
-- Docker and Docker Compose
-- Python 3.11+
+```bash
+docker-compose up -d
+```
 
-### Running Locally
+2. Generate test data for observability:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/kodekloud-records-store-web-app.git
-   cd kodekloud-records-store-web-app
-   ```
+```bash
+./scripts/generate_logs.sh
+```
 
-2. Start the application using Docker Compose:
-   ```bash
-   cd config
-   docker-compose up -d
-   ```
+3. Access the applications:
 
-3. Access the services:
-   - API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-   - Grafana: http://localhost:3000 (admin/admin)
-   - Prometheus: http://localhost:9090
-   - Jaeger UI: http://localhost:16686
-   - RabbitMQ Management: http://localhost:15672 (guest/guest)
+- Application: http://localhost:8000
+- Grafana: http://localhost:3000
+- Prometheus: http://localhost:9090
+- Jaeger UI: http://localhost:16686
 
-### Development Setup
+## Observability Components
 
-1. Create a virtual environment:
-   ```bash
-   cd src
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+This project demonstrates a complete observability solution with:
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Metrics
+- **Prometheus** for metrics collection and alerting
+- **Grafana** for visualization
+- **Pushgateway** for batch job metrics
+- **Blackbox Exporter** for synthetic monitoring
 
-3. Run the API locally:
-   ```bash
-   uvicorn api.main:app --reload
-   ```
+### Logs
+- **Loki** for log aggregation
+- **Fluent Bit** for log collection
+- Structured logging with trace context
 
-## API Endpoints
+### Traces
+- **Jaeger** for distributed tracing
+- **OpenTelemetry** for instrumentation
 
-- `GET /products` - List all products
-- `POST /products` - Add a new product
-- `GET /products/{id}` - Get product details
-- `GET /orders` - List all orders
-- `POST /orders` - Create a new order
-- `GET /orders/{id}` - Get order details
-- `POST /orders/{id}/process` - Process a specific order
-- `GET /metrics` - Prometheus metrics endpoint
-- `GET /trace-test` - Test endpoint for Jaeger tracing
+## Lab Exercises
 
-## Monitoring and Observability
+See `observability-lab.md` for hands-on exercises to learn about:
+- Understanding metrics, logs, and traces
+- Querying logs with LogQL
+- Analyzing traces
+- Correlating telemetry data
+- Troubleshooting using observability tools
 
-- **Metrics**: Prometheus collects metrics from both the API and worker services
-- **Dashboards**: Grafana provides pre-configured dashboards for monitoring
-- **Tracing**: Jaeger collects distributed traces for request flows
-- **Logging**: Structured logs are available in container logs
+## Contributing
 
-## Deployment
-
-The application can be deployed using:
-
-- Docker Compose for development/testing
-- Kubernetes with Helm charts for production (see the `kodekloud-record-store-helm` repository)
-- GitHub Actions workflow for CI/CD pipeline
+Feel free to submit issues and enhancement requests.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.

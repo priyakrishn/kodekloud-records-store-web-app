@@ -9,6 +9,7 @@ services:
       - db
       - rabbitmq
       - jaeger
+      - fluent-bit
     ports:
       - "8000:8000"
     environment:
@@ -19,6 +20,12 @@ services:
       RABBITMQ_HOST: rabbitmq
       PYTHONPATH: /app/src
       OTEL_SERVICE_NAME: kodekloud-record-store-api
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: "localhost:24224"
+        tag: "docker.{{.Name}}"
+        fluentd-async: "true"
     networks:
       - kodekloud-record-store-net
 
@@ -174,11 +181,16 @@ services:
     container_name: kodekloud-record-store-fluent-bit
     volumes:
       - ./config/monitoring/logging/fluent-bit-config.yaml:/fluent-bit/etc/fluent-bit.conf
-      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
     depends_on:
       - loki
     networks:
       - kodekloud-record-store-net
+    user: "0"
 
 networks:
   kodekloud-record-store-net:

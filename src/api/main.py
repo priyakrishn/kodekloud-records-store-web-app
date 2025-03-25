@@ -12,8 +12,24 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
-# Initialize Logging First
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+# Initialize Logging First - Use JSON formatter
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        if isinstance(record.msg, dict):
+            return json.dumps(record.msg)
+        return json.dumps({"message": record.getMessage(), "level": record.levelname})
+
+# Configure root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+# Remove existing handlers
+for handler in root_logger.handlers:
+    root_logger.removeHandler(handler)
+# Add JSON console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(JsonFormatter())
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger(__name__)
 
 # Create structured logger
@@ -27,7 +43,7 @@ class StructuredLogger:
         span = trace.get_current_span()
         span_context = span.get_span_context()
         
-        # Format as JSON
+        # Format as JSON directly
         log_data = {
             "message": msg,
             "level": "INFO",
@@ -35,14 +51,15 @@ class StructuredLogger:
             "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
             **kwargs
         }
-        self.logger.info(json.dumps(log_data))
+        # Send as dict rather than string
+        self.logger.info(log_data)
     
     def error(self, msg, **kwargs):
         # Add trace context
         span = trace.get_current_span()
         span_context = span.get_span_context()
         
-        # Format as JSON
+        # Format as JSON directly
         log_data = {
             "message": msg,
             "level": "ERROR",
@@ -50,7 +67,8 @@ class StructuredLogger:
             "span_id": format(span_context.span_id, "016x") if span_context.is_valid else None,
             **kwargs
         }
-        self.logger.error(json.dumps(log_data))
+        # Send as dict rather than string
+        self.logger.error(log_data)
 
 # Replace logger with structured logger
 structured_logger = StructuredLogger(__name__)
@@ -197,5 +215,29 @@ async def error_test():
         return Response(content=json.dumps({"error": "Simulated error"}), 
                        status_code=500, 
                        media_type="application/json")
+
+@app.on_event("startup")
+async def generate_test_logs():
+    # Generate some logs with trace contexts
+    tracer = get_tracer(__name__)
+    
+    # Generate log with trace context
+    with tracer.start_as_current_span("startup-span") as span:
+        span.set_attribute("test.attribute", "test-value")
+        span.set_attribute("custom.operation", "startup-test")
+        structured_logger.info("Application started", 
+                             operation="app_startup",
+                             trace_id=format(span.get_span_context().trace_id, "032x"),
+                             span_id=format(span.get_span_context().span_id, "016x"))
+    
+    # Generate error log with trace context
+    with tracer.start_as_current_span("error-test-span") as span:
+        span.set_attribute("error", True)
+        span.set_attribute("custom.operation", "error-simulation")
+        structured_logger.error("Test error log", 
+                             error_type="SimulatedError",
+                             operation="error_test",
+                             trace_id=format(span.get_span_context().trace_id, "032x"),
+                             span_id=format(span.get_span_context().span_id, "016x"))
 
 structured_logger.info("api_startup", status="complete", version="1.0.0")

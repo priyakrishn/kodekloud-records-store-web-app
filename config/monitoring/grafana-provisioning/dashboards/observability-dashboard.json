@@ -184,7 +184,7 @@
       },
       "targets": [
         {
-          "expr": "{container_name=\"kodekloud-record-store-api\"} | json | level=\"ERROR\"",
+          "expr": "{container_name=\"kodekloud-record-store-api\"} |= \"ERROR\"",
           "refId": "A"
         }
       ],
@@ -213,7 +213,7 @@
       },
       "targets": [
         {
-          "expr": "{container_name=\"kodekloud-record-store-api\"} | json | trace_id != \"\"",
+          "expr": "{container_name=\"kodekloud-record-store-api\"} |= \"trace_id\"",
           "refId": "A"
         }
       ],
@@ -279,7 +279,7 @@
       },
       "targets": [
         {
-          "expr": "{container_name=\"kodekloud-record-store-api\"} | json | operation=~\".+\"",
+          "expr": "{container_name=\"kodekloud-record-store-api\"} |= \"operation\"",
           "refId": "A"
         }
       ],
@@ -443,7 +443,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "KodeKloud Records - Observability Dashboard",
+  "title": "KodeKloud Records - Observability Dashboard with logging and tracing",
   "uid": "kodekloud-observability",
   "version": 1
 } 

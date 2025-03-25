@@ -42,22 +42,32 @@ Why? Logs capture point-in-time events with details, while traces connect relate
 
 Let's generate some test data for our observability tools:
 
-1. Send requests to various endpoints:
+1. First, run our comprehensive test data generator script:
 ```bash
-./test_traffic.sh
+./scripts/generate_logs.sh
 ```
 
-2. Generate some trace data by calling the trace test endpoint:
+This script will:
+- Generate trace context data
+- Create error logs
+- Produce 404 errors
+- Create products and orders
+- Generate slow operations with nested spans
+- Simulate traffic patterns
+
+2. Or run individual tests as needed:
+
+Generate some trace data by calling the trace test endpoint:
 ```bash
 curl http://localhost:8000/trace-test
 ```
 
-3. Generate some error data for our logs:
+Generate some error data for our logs:
 ```bash
 curl http://localhost:8000/error-test
 ```
 
-4. Generate slow operation data with nested spans:
+Generate slow operation data with nested spans:
 ```bash
 curl http://localhost:8000/slow-operation
 ```
@@ -81,13 +91,13 @@ This allows us to correlate logs with traces to get the full picture of what hap
 Question: Which LogQL query would you use to find all errors in the API service that also have trace IDs?
 
 A. `{container_name="kodekloud-record-store-api"} |= "ERROR"`
-B. `{container_name="kodekloud-record-store-api"} | json | level="ERROR" and trace_id != ""`
-C. `{container_name="kodekloud-record-store-api"} | json | level="ERROR" | trace_id != null`
+B. `{container_name="kodekloud-record-store-api"} |= "ERROR" |= "trace_id"`
+C. `{job="fluentbit"} | json | level="ERROR" and trace_id != ""`
 D. `{job="kodekloud-record-store-api"} |= "error"`
 
-Correct Answer: B. `{container_name="kodekloud-record-store-api"} | json | level="ERROR" and trace_id != ""`
+Correct Answer: B. `{container_name="kodekloud-record-store-api"} |= "ERROR" |= "trace_id"`
 
-Why? This query uses the JSON parser to extract structured fields, filters for error level logs, and ensures there's a trace ID present.
+Why? This query filters logs from the API container that contain both "ERROR" and "trace_id" strings, which will find error logs that include trace context.
 
 ## [Config] Find and Analyze a Trace
 
@@ -157,12 +167,35 @@ Create a LogQL query to analyze checkout operations:
 2. Select Loki as the data source
 3. Enter this query to find all checkout operations:
    ```
-   {container_name="kodekloud-record-store-api"} | json | operation="checkout"
+   {container_name="kodekloud-record-store-api"} |= "operation" |= "checkout"
    ```
 4. Modify the query to focus on checkout errors:
    ```
-   {container_name="kodekloud-record-store-api"} | json | operation="checkout" | level="ERROR"
+   {container_name="kodekloud-record-store-api"} |= "ERROR" |= "operation" |= "checkout"
    ```
+5. Find logs with trace context that you can correlate with Jaeger:
+   ```
+   {container_name="kodekloud-record-store-api"} |= "trace_id"
+   ```
+6. Look for slow operations (operations taking more than 1 second):
+   ```
+   {container_name="kodekloud-record-store-api"} |= "duration_ms" |= "operation"
+   ```
+
+Try running these queries after generating test data with the `/trace-test` and `/error-test` endpoints.
+
+You can also create more complex queries to analyze specific patterns in your logs:
+
+- Find all logs from a specific trace:
+  ```
+  {container_name="kodekloud-record-store-api"} |~ "trace_id\":\"[a-f0-9]+"
+  ```
+  (Copy a trace ID from one of your logs and replace the regex pattern)
+
+- Count errors by operation type:
+  ```
+  sum by(operation) (count_over_time({container_name="kodekloud-record-store-api"} |= "ERROR" |= "operation" [5m]))
+  ```
 
 ## [MCQ] Advanced Traces and Spans
 
