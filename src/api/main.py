@@ -116,68 +116,104 @@ async def metrics_middleware(request: Request, call_next):
     method = request.method
     endpoint = request.url.path
     
-    try:
-        response = await call_next(request)
-        status_code = response.status_code
+    # Create explicit span for the request
+    tracer = get_tracer(__name__)
+    with tracer.start_as_current_span(
+        f"{method} {endpoint}",
+        attributes={
+            "http.method": method,
+            "http.url": str(request.url),
+            "http.route": endpoint
+        },
+    ) as span:
         
-        # Record request count
-        REQUEST_COUNT.labels(
-            method=method,
-            endpoint=endpoint,
-            status_code=status_code
-        ).inc()
-        
-        # Record request duration
-        duration = time.time() - start_time
-        REQUEST_DURATION.labels(
-            method=method,
-            endpoint=endpoint
-        ).observe(duration)
-        
-        # Structured logging for each request
-        structured_logger.info(
-            "request_processed",
-            method=method,
-            endpoint=endpoint,
-            status_code=status_code,
-            duration_ms=round(duration * 1000, 2)
-        )
-        
-        # Track HTTP errors (4xx, 5xx) separately
-        if status_code >= 400:
-            ERROR_COUNT.labels(
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            
+            # Add response attributes to span
+            span.set_attribute("http.status_code", status_code)
+            if status_code >= 400:
+                span.set_status(trace.Status(trace.StatusCode.ERROR))
+            
+            # Record request count
+            REQUEST_COUNT.labels(
                 method=method,
                 endpoint=endpoint,
-                error_type=f"http_{status_code}"
+                status_code=status_code
             ).inc()
-            structured_logger.error(
-                "http_error",
+            
+            # Record request duration
+            duration = time.time() - start_time
+            REQUEST_DURATION.labels(
+                method=method,
+                endpoint=endpoint
+            ).observe(duration)
+            
+            # Get the current trace and span ID for logging
+            span_context = span.get_span_context()
+            trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
+            span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
+            
+            # Structured logging for each request
+            structured_logger.info(
+                "request_processed",
                 method=method,
                 endpoint=endpoint,
                 status_code=status_code,
-                duration_ms=round(duration * 1000, 2)
+                duration_ms=round(duration * 1000, 2),
+                trace_id=trace_id,
+                span_id=span_id
             )
-        
-        return response
-        
-    except Exception as e:
-        # Record exceptions
-        ERROR_COUNT.labels(
-            method=method,
-            endpoint=endpoint,
-            error_type=type(e).__name__
-        ).inc()
-        
-        structured_logger.error(
-            "request_failed",
-            method=method,
-            endpoint=endpoint,
-            error=str(e),
-            error_type=type(e).__name__
-        )
-        
-        # Re-raise the exception
-        raise e
+            
+            # Track HTTP errors (4xx, 5xx) separately
+            if status_code >= 400:
+                ERROR_COUNT.labels(
+                    method=method,
+                    endpoint=endpoint,
+                    error_type=f"http_{status_code}"
+                ).inc()
+                structured_logger.error(
+                    "http_error",
+                    method=method,
+                    endpoint=endpoint,
+                    status_code=status_code,
+                    duration_ms=round(duration * 1000, 2),
+                    trace_id=trace_id,
+                    span_id=span_id
+                )
+            
+            return response
+            
+        except Exception as e:
+            # Set span to error
+            span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            span.record_exception(e)
+            
+            # Record exceptions
+            ERROR_COUNT.labels(
+                method=method,
+                endpoint=endpoint,
+                error_type=type(e).__name__
+            ).inc()
+            
+            # Get the current trace and span ID for logging
+            span_context = span.get_span_context()
+            trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
+            span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
+            
+            structured_logger.error(
+                "request_failed",
+                method=method,
+                endpoint=endpoint,
+                error=str(e),
+                error_type=type(e).__name__,
+                trace_id=trace_id,
+                span_id=span_id
+            )
+            
+            # Re-raise the exception
+            raise e
 
 @app.get("/")
 async def root():
@@ -197,8 +233,46 @@ async def trace_test():
     with tracer.start_as_current_span("test-span") as span:
         span.set_attribute("test.attribute", "test-value")
         span.set_attribute("custom.operation", "trace-test")
-        structured_logger.info("trace_test_executed", span_name="test-span", service="api")
-        return {"message": "Test span created"}
+        
+        # Get the current trace and span ID for logging
+        span_context = span.get_span_context()
+        trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
+        span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
+        
+        # Log with explicit trace context
+        structured_logger.info(
+            "trace_test_executed", 
+            span_name="test-span", 
+            service="api",
+            trace_id=trace_id,
+            span_id=span_id,
+            test_attribute="test-value"
+        )
+        
+        # Create a child span
+        with tracer.start_as_current_span("child-span") as child_span:
+            child_span.set_attribute("relationship", "child")
+            time.sleep(0.1)  # Add a small delay
+            
+            # Log from child span
+            child_context = child_span.get_span_context()
+            child_trace_id = format(child_context.trace_id, "032x") if child_context.is_valid else None
+            child_span_id = format(child_context.span_id, "016x") if child_context.is_valid else None
+            
+            structured_logger.info(
+                "child_span_executed",
+                span_name="child-span",
+                service="api",
+                trace_id=child_trace_id,
+                span_id=child_span_id,
+                parent_span_id=span_id
+            )
+        
+        return {
+            "message": "Test spans created",
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
 
 @app.get("/error-test")
 async def error_test():
@@ -206,15 +280,35 @@ async def error_test():
     with tracer.start_as_current_span("error-span") as span:
         span.set_attribute("error", True)
         span.set_attribute("custom.operation", "error-simulation")
-        structured_logger.error("error_test_executed", 
-                                span_name="error-span", 
-                                service="api", 
-                                error_type="SimulatedError",
-                                error_reason="Testing error logging and tracing")
+        
+        # Set span status to error
+        span.set_status(trace.Status(trace.StatusCode.ERROR, "Simulated error for testing"))
+        
+        # Get the current trace and span ID for logging
+        span_context = span.get_span_context()
+        trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
+        span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
+        
+        structured_logger.error(
+            "error_test_executed", 
+            span_name="error-span", 
+            service="api", 
+            error_type="SimulatedError",
+            error_reason="Testing error logging and tracing",
+            trace_id=trace_id,
+            span_id=span_id
+        )
+        
         # Simulate an HTTP 500 error
-        return Response(content=json.dumps({"error": "Simulated error"}), 
-                       status_code=500, 
-                       media_type="application/json")
+        return Response(
+            content=json.dumps({
+                "error": "Simulated error",
+                "trace_id": trace_id,
+                "span_id": span_id
+            }), 
+            status_code=500, 
+            media_type="application/json"
+        )
 
 @app.on_event("startup")
 async def generate_test_logs():
