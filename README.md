@@ -29,34 +29,156 @@ The application uses a microservice architecture with the following components:
   - Blackbox Exporter for synthetic monitoring
   - Fluent Bit for log collection
 
+### Microservices Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph "User Interface"
+        API[Web API<br>FastAPI<br>Port: 8000]
+    end
+
+    subgraph "Core Microservices"
+        PS[Product Service]
+        OS[Order Service]
+        US[User Service]
+        IS[Inventory Service]
+        NS[Notification Service]
+    end
+
+    subgraph "Async Processing"
+        MQ[RabbitMQ<br>Port: 5672]
+        CW[Celery Workers]
+    end
+
+    subgraph "Storage"
+        DB[PostgreSQL<br>Port: 5432]
+    end
+
+    subgraph "Observability"
+        PR[Prometheus<br>Port: 9090]
+        GF[Grafana<br>Port: 3000]
+        JG[Jaeger<br>Port: 16686]
+        LK[Loki<br>Port: 3100]
+        AM[AlertManager<br>Port: 9093]
+        BB[Blackbox Exporter<br>Port: 9115]
+        FB[Fluent Bit]
+    end
+
+    %% Core service connections
+    API --> PS
+    API --> OS
+    API --> US
+    API --> IS
+    API --> NS
+
+    %% Service to database connections
+    PS --> DB
+    OS --> DB
+    US --> DB
+    IS --> DB
+    NS --> DB
+
+    %% Async processing connections
+    API --> MQ
+    OS --> MQ
+    IS --> MQ
+    NS --> MQ
+    MQ --> CW
+    CW --> DB
+    CW --> NS
+
+    %% Observability connections
+    PR --> API
+    PR --> PS
+    PR --> OS
+    PR --> US
+    PR --> IS
+    PR --> NS
+    PR --> MQ
+    PR --> CW
+    PR --> DB
+    PR --> BB
+    
+    FB --> API
+    FB --> PS
+    FB --> OS
+    FB --> US
+    FB --> IS
+    FB --> NS
+    FB --> CW
+    FB --> LK
+    
+    API --> JG
+    PS --> JG
+    OS --> JG
+    US --> JG
+    IS --> JG
+    NS --> JG
+    
+    GF --> PR
+    GF --> LK
+    GF --> JG
+    PR --> AM
+
+    %% External connections
+    BB -.-> API
+    
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef storage fill:#bfb,stroke:#333,stroke-width:1px;
+    classDef messaging fill:#fbb,stroke:#333,stroke-width:1px;
+    classDef observability fill:#ffd,stroke:#333,stroke-width:1px;
+    
+    class API primary;
+    class PS,OS,US,IS,NS secondary;
+    class DB storage;
+    class MQ,CW messaging;
+    class PR,GF,JG,LK,AM,BB,FB observability;
+```
+
+### Data Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as Web API
+    participant PS as Product Service
+    participant OS as Order Service
+    participant IS as Inventory Service
+    participant NS as Notification Service
+    participant MQ as RabbitMQ
+    participant CW as Celery Workers
+    participant DB as Database
+    
+    C->>A: Browse Product Catalog
+    A->>PS: Get Products
+    PS->>DB: Query Products
+    DB-->>PS: Product Data
+    PS-->>A: Product List
+    A-->>C: Display Products
+    
+    C->>A: Place Order
+    A->>OS: Create Order
+    OS->>DB: Save Order
+    DB-->>OS: Order ID
+    OS->>MQ: Queue Inventory Update
+    MQ->>CW: Process Inventory Task
+    CW->>IS: Update Inventory
+    IS->>DB: Update Stock
+    CW->>MQ: Queue Notification
+    MQ->>CW: Process Notification Task
+    CW->>NS: Send Notification
+    NS-->>C: Email Confirmation
+    
+    Note over A,DB: All operations are traced with Jaeger
+    Note over A,NS: All components emit metrics to Prometheus
+    Note over A,NS: All logs go to Loki via Fluent Bit
+```
+
 ## Project Structure
 
 ```
-kodekloud-records-store-web-app/
-├── src/                         # Application source code
-│   ├── api/                     # API implementation
-│   │   ├── main.py              # FastAPI application entry point
-│   │   ├── routes.py            # API route definitions
-│   │   ├── telemetry.py         # OpenTelemetry instrumentation
-│   │   ├── database.py          # Database connection handling
-│   │   ├── models.py            # Database models
-│   │   └── worker.py            # Celery worker definition
-│   └── requirements.txt         # Python dependencies
-├── config/                      # Configuration files
-│   └── monitoring/              # Observability configuration
-│       ├── grafana-provisioning/# Grafana dashboards and datasources
-│       ├── logging/             # Loki and Fluent Bit configs
-│       ├── prometheus.yml       # Prometheus configuration
-│       ├── alert_rules.yml      # Prometheus alert rules
-│       ├── sli_rules.yml        # Service Level Indicator definitions
-│       ├── alertmanager.yml     # Alert notification routing
-│       └── blackbox.yml         # Synthetic monitoring config
-├── scripts/                     # Utility scripts
-│   └── generate_logs.sh         # Script to generate test logs and traces
-├── docker-compose.yaml          # Docker Compose configuration
-├── Dockerfile                   # Application Dockerfile
-├── test_traffic.sh              # Script to generate test traffic
-└── black_box_monitor.sh         # Simple black-box monitoring script
+.
 ```
 
 ## Getting Started

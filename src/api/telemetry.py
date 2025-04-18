@@ -10,6 +10,14 @@ import os
 import socket
 import time
 import sys
+from prometheus_client import Histogram
+
+# Define the ORDER_PROCESSING_TIME Histogram metric
+ORDER_PROCESSING_TIME = Histogram(
+    'order_processing_time_seconds',
+    'Time taken for an order to be fully processed',
+    buckets=[1.0, 2.0, 3.0, 5.0, 10.0, 30.0]
+)
 
 logger = logging.getLogger(__name__)
 
