@@ -14,10 +14,11 @@ scrape_configs:
     static_configs:
       - targets: ['api:8000']
 
-  - job_name: 'kodekloud-record-store-worker'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['worker:8000']
+# Worker metrics are pushed to pushgateway, not scraped directly
+#  - job_name: 'kodekloud-record-store-worker'
+#    metrics_path: '/metrics'
+#    static_configs:
+#      - targets: ['worker:8000']
 
   - job_name: 'pushgateway'
     honor_labels: true
@@ -74,3 +75,10 @@ scrape_configs:
 
 rule_files:
   - /etc/prometheus/alert_rules.yml
+  - /etc/prometheus/sli_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
