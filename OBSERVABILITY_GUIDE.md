@@ -155,15 +155,10 @@ Visit the "KodeKloud Records Store - End-to-End Purchase Journey" dashboard in G
 - Conversion funnel analysis
 - Customer experience measurement
 
-### 3. Service Dependency Mapping
-- Health status of all dependencies
-- Impact analysis of service failures
-- Cascading failure detection
-
-### 4. End-to-End SLO Monitoring
-- Journey-level SLOs (checkout completion time)
-- Component-level SLAs (API response time)
-- Business-level metrics (order success rate)
+### 3. Basic Health Monitoring
+- Service availability tracking
+- Database connection health
+- Background job processing status
 
 ## 🔧 Debugging Workflow
 
@@ -179,8 +174,8 @@ Visit the "KodeKloud Records Store - End-to-End Purchase Journey" dashboard in G
 # High error rate in checkout?
 docker logs kodekloud-record-store-api | grep "ERROR" | grep "checkout"
 
-# Specific user issue?
-docker logs kodekloud-record-store-api | grep "correlation-id-here"
+# Search for recent events by order ID
+docker logs kodekloud-record-store-api | grep "order_id.*7"
 ```
 
 #### 3. Analyze Traces
@@ -270,50 +265,19 @@ for: 1m
 3. Identify any performance bottlenecks
 4. Correlate metrics, logs, and traces
 
-## 🔍 Advanced Techniques
+## 📚 Fundamentals Resources
 
-### Custom Business Metrics
-```python
-# Track business-specific events
-business_metrics = {
-    'album_purchases_by_genre': Counter('album_purchases_total', ['genre']),
-    'revenue_by_payment_method': Counter('revenue_total', ['payment_method']),
-    'customer_lifetime_value': Histogram('customer_ltv')
-}
-```
-
-### Dependency Impact Analysis
-```python
-def analyze_dependency_impact(failed_service):
-    """Automatically identify which services/features are affected"""
-    dependency_map = {
-        'database': ['checkout', 'product_browse', 'order_history'],
-        'rabbitmq': ['order_processing', 'email_notifications'],
-        'payment_gateway': ['checkout', 'refunds']
-    }
-    return dependency_map.get(failed_service, [])
-```
-
-### Predictive Alerting
-```prometheus
-# Predict checkout saturation based on queue depth trends
-predict_linear(rabbitmq_queue_messages_ready[30m], 3600) > 1000
-```
-
-## 📚 Additional Resources
-
-- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
-- [Prometheus Best Practices](https://prometheus.io/docs/practices/)
-- [Grafana Dashboard Design](https://grafana.com/docs/grafana/latest/best-practices/)
-- [Distributed Tracing Patterns](https://microservices.io/patterns/observability/distributed-tracing.html)
+- [OpenTelemetry Getting Started](https://opentelemetry.io/docs/getting-started/)
+- [Prometheus Basics](https://prometheus.io/docs/introduction/overview/)
+- [Grafana Fundamentals](https://grafana.com/docs/grafana/latest/getting-started/)
+- [Structured Logging Best Practices](https://betterstack.com/community/guides/logging/structured-logging/)
 
 ## 🎯 Key Takeaways
 
 1. **OpenTelemetry trace IDs** provide automatic request correlation across all system components
 2. **End-to-end dashboards** provide business context to technical metrics
 3. **The three pillars work together** - metrics show what, logs show why, traces show where
-4. **Business metrics matter** as much as technical metrics
-5. **Structured logging** with consistent labeling enables powerful correlation
-6. **Automation is key** for complex distributed systems
+4. **Structured logging** with consistent labeling enables powerful correlation
+5. **Start simple** - basic observability provides immediate value
 
-This setup demonstrates production-ready observability patterns that scale from small applications to large distributed systems. The correlation approach shown here works for both monolithic and microservice architectures. 
+This setup demonstrates fundamental observability patterns that provide immediate value for understanding system behavior. Focus on mastering these basics before moving to advanced techniques. 
