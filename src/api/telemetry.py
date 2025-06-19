@@ -1,13 +1,23 @@
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry import propagate
 import logging
 import os
 import socket
 import time
 import sys
+from prometheus_client import Histogram
+
+# Define the ORDER_PROCESSING_TIME Histogram metric
+ORDER_PROCESSING_TIME = Histogram(
+    'order_processing_time_seconds',
+    'Time taken for an order to be fully processed',
+    buckets=[1.0, 2.0, 3.0, 5.0, 10.0, 30.0]
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,26 +45,31 @@ def setup_telemetry(service_name=None):
     
     # Test network connectivity to Jaeger
     try:
-        logger.info(f"🌐 Testing network connectivity to Jaeger agent...")
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        logger.info(f"🌐 Testing network connectivity to Jaeger OTLP endpoint...")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-        s.connect(("jaeger", 6831))
+        s.connect(("jaeger", 4317))  # OTLP gRPC port
         s.close()
-        logger.info("✅ Network connection to Jaeger agent successful")
+        logger.info("✅ Network connection to Jaeger OTLP endpoint successful")
     except Exception as e:
-        logger.error(f"❌ Failed to connect to Jaeger agent: {e}")
+        logger.error(f"❌ Failed to connect to Jaeger OTLP endpoint: {e}")
     
     try:
         logger.info(f"🔧 Creating TracerProvider for {actual_service_name}")
         # Create a TracerProvider with proper resource
-        provider = TracerProvider(
-            resource=Resource.create({"service.name": actual_service_name})
-        )
+        resource = Resource.create({
+            "service.name": actual_service_name,
+            "service.instance.id": socket.gethostname(),
+            "deployment.environment": "development"
+        })
+        
+        provider = TracerProvider(resource=resource)
         
         logger.info(f"🔌 Configuring OTLP Exporter")
-        # Use OTLP exporter instead of Jaeger exporter
+        # Use OTLP gRPC exporter
         otlp_exporter = OTLPSpanExporter(
-            endpoint="http://jaeger:4318/v1/traces"
+            endpoint="jaeger:4317",
+            insecure=True
         )
         
         logger.info(f"➕ Adding BatchSpanProcessor")
@@ -63,15 +78,13 @@ def setup_telemetry(service_name=None):
             BatchSpanProcessor(otlp_exporter)
         )
         
-        logger.info(f"➕ Adding SimpleSpanProcessor for immediate export")
-        # Add SimpleSpanProcessor for immediate export
-        provider.add_span_processor(
-            SimpleSpanProcessor(otlp_exporter)
-        )
-        
         logger.info(f"🔄 Setting global TracerProvider")
         # Set the global TracerProvider
         trace.set_tracer_provider(provider)
+        
+        # Set up context propagation
+        logger.info(f"🔗 Setting up W3C trace context propagation")
+        propagate.set_global_textmap(TraceContextTextMapPropagator())
         
         _telemetry_initialized = True
         

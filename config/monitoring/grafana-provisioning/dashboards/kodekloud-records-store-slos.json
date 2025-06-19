@@ -27,14 +27,14 @@
         "x": 0,
         "y": 0
       },
-      "id": 12,
+      "id": 50,
       "panels": [],
-      "title": "SLO Summary",
+      "title": "OVERALL SERVICE HEALTH",
       "type": "row"
     },
     {
-      "datasource": "Prometheus",
-      "description": "Time remaining until 30-day SLO budget is exhausted at the current burn rate",
+      "datasource": null,
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -45,38 +45,25 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 3
-              },
-              {
-                "color": "yellow",
-                "value": 7
-              },
-              {
                 "color": "green",
-                "value": 14
+                "value": null
               }
             ]
-          },
-          "unit": "d"
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
+        "h": 2,
+        "w": 24,
         "x": 0,
         "y": 1
       },
-      "id": 2,
+      "id": 52,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
+        "graphMode": "none",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -91,18 +78,152 @@
       "pluginVersion": "7.5.7",
       "targets": [
         {
-          "expr": "clamp_min((0.001 - (1 - avg_over_time(probe_success{endpoint=\"/health\"}[30d]))) / clamp_min(((1 - avg_over_time(probe_success{endpoint=\"/health\"}[1h])) - (1 - avg_over_time(probe_success{endpoint=\"/health\"}[30d]))), 0.000001) * 30, 0)",
+          "queryType": "randomWalk",
+          "refId": "A"
+        }
+      ],
+      "title": "KodeKloud Records Store Service Dashboard",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Service availability status against 99.9% target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 95,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 99.5
+              },
+              {
+                "color": "yellow",
+                "value": 99.8
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 3
+      },
+      "id": 54,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "100 * avg_over_time(probe_success{endpoint=\"/health\"}[1h])",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
         }
       ],
-      "title": "Availability SLO Budget Remaining",
-      "type": "stat"
+      "title": "AVAILABILITY (Target: 99.9%)",
+      "type": "gauge"
     },
     {
       "datasource": "Prometheus",
-      "description": "Current error budget consumption as a percentage of total monthly budget",
+      "description": "95th percentile latency for orders against 3s target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 5,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "orange",
+                "value": 2.5
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 3
+      },
+      "id": 56,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[1h])) by (le))",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "ORDER LATENCY P95 (Target: 3s)",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Combined error budget consumption for both SLOs",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -137,12 +258,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 5,
         "w": 8,
-        "x": 8,
-        "y": 1
+        "x": 16,
+        "y": 3
       },
-      "id": 4,
+      "id": 58,
       "options": {
         "orientation": "auto",
         "reduceOptions": {
@@ -161,11 +282,17 @@
         {
           "expr": "clamp_max(100 * (1 - avg_over_time(probe_success{endpoint=\"/health\"}[30d])) / 0.001, 100)",
           "interval": "",
-          "legendFormat": "Consumed",
+          "legendFormat": "Availability",
           "refId": "A"
+        },
+        {
+          "expr": "clamp_max(100 * (1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[30d])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[30d])))) / 0.001, 100)",
+          "interval": "",
+          "legendFormat": "Order Processing",
+          "refId": "B"
         }
       ],
-      "title": "Availability Error Budget Consumption",
+      "title": "ERROR BUDGET CONSUMPTION",
       "type": "gauge"
     },
     {
@@ -175,11 +302,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 8
       },
-      "id": 14,
+      "id": 60,
       "panels": [],
-      "title": "Availability SLO",
+      "title": "7-DAY TRENDS",
       "type": "row"
     },
     {
@@ -194,14 +321,14 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Shows how current error rates compare to SLO targets:\n- 30-day average (blue): should stay above the SLO line for compliance\n- 7-day average (yellow): medium-term trend\n- 1-day average (orange): short-term trend for fast burn rate",
+      "description": "Availability trend over the past 7 days against the SLO target",
       "fill": 0,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 0,
-        "y": 10
+        "y": 9
       },
       "hiddenSeries": false,
       "id": 8,
@@ -239,35 +366,29 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg_over_time(probe_success{endpoint=\"/health\"}[30d])",
-          "interval": "",
-          "legendFormat": "30d",
-          "refId": "A"
-        },
-        {
           "expr": "avg_over_time(probe_success{endpoint=\"/health\"}[7d])",
           "interval": "",
           "legendFormat": "7d",
-          "refId": "B"
+          "refId": "A"
         },
         {
           "expr": "avg_over_time(probe_success{endpoint=\"/health\"}[1d])",
           "interval": "",
-          "legendFormat": "Fast Burn",
-          "refId": "C"
+          "legendFormat": "1d",
+          "refId": "B"
         },
         {
           "expr": "0.999",
           "interval": "",
           "legendFormat": "SLO Target",
-          "refId": "D"
+          "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Availability SLO Trends",
+      "title": "Availability Trend",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -306,6 +427,121 @@
     },
     {
       "aliasColors": {
+        "1h p95": "orange",
+        "24h p95": "blue",
+        "6h p95": "yellow",
+        "SLO Target": "red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "Order processing time trend over the past 7 days",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "hiddenSeries": false,
+      "id": 38,
+      "legend": {
+        "avg": false,
+        "current": true,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "SLO Target",
+          "color": "#C4162A",
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 1
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[1d])) by (le))",
+          "interval": "",
+          "legendFormat": "1d p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[7d])) by (le))",
+          "interval": "",
+          "legendFormat": "7d p95",
+          "refId": "B"
+        },
+        {
+          "expr": "3",
+          "interval": "",
+          "legendFormat": "SLO Target",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Order Processing Time Trend",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Processing Time (p95)",
+          "logBase": 1,
+          "max": "10",
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
         "1d Budget": "red",
         "30d Budget": "blue",
         "7d Budget": "yellow"
@@ -314,14 +550,14 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Shows how much of the error budget has been consumed over different time windows",
+      "description": "Error budget consumption trend over time",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 10
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 16
       },
       "hiddenSeries": false,
       "id": 10,
@@ -351,22 +587,16 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "clamp_max(100 * (1 - avg_over_time(probe_success{endpoint=\"/health\"}[30d])) / 0.001, 100)",
+          "expr": "clamp_max(100 * (1 - avg_over_time(probe_success{endpoint=\"/health\"}[7d])) / 0.001, 100)",
           "interval": "",
-          "legendFormat": "30d Budget",
+          "legendFormat": "Availability Budget (7d)",
           "refId": "A"
         },
         {
-          "expr": "clamp_max(100 * (1 - avg_over_time(probe_success{endpoint=\"/health\"}[7d])) / 0.001, 100)",
+          "expr": "clamp_max(100 * (sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[7d])) - sum(rate(order_processing_time_seconds_bucket{le=\"3.0\"}[7d]))) / (0.05 * sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[7d]))), 100)",
           "interval": "",
-          "legendFormat": "7d Budget",
+          "legendFormat": "Latency Budget (7d)",
           "refId": "B"
-        },
-        {
-          "expr": "clamp_max(100 * (1 - avg_over_time(probe_success{endpoint=\"/health\"}[1d])) / 0.001, 100)",
-          "interval": "",
-          "legendFormat": "1d Budget",
-          "refId": "C"
         }
       ],
       "thresholds": [
@@ -382,7 +612,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Error Budget Consumption",
+      "title": "Error Budget Consumption Trend",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -775,6 +1005,998 @@
       ],
       "title": "Error Rate Budget Consumption (1% SLO)",
       "type": "gauge"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 28,
+      "panels": [],
+      "title": "Order Processing Success Rate SLO",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Current error budget consumption as a percentage of total monthly budget",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 37
+      },
+      "id": 40,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "clamp_max(100 * (1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[30d])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[30d])))) / 0.001, 100)",
+          "interval": "",
+          "legendFormat": "Consumed",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing Error Budget Consumption",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Time remaining until monthly order processing SLO budget is exhausted at the current burn rate",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "yellow",
+                "value": 7
+              },
+              {
+                "color": "green",
+                "value": 14
+              }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 37
+      },
+      "id": 42,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "clamp_min((0.001 - (1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[30d])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[30d]))))) / clamp_min(((1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[1h])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[1h])))) - (1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[30d])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[30d]))))), 0.000001) * 30, 0)",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing SLO Budget Remaining",
+      "type": "stat"
+    },
+    {
+      "content": "# Order Processing Error Budget Policy\n\n**SLO: 99.9% order processing success rate (monthly)**\n\n**Error Budget: 0.1% = 43.2 minutes of processing failures per month**\n\n## Actions by Consumption Level\n\n### When 50% of the monthly error budget is consumed:\n- Investigate database and worker queue performance metrics\n- Enhance monitoring of order processing pipeline\n- Alert engineering leadership about potential issues\n\n### When 75% of the budget is consumed:\n- Deploy only critical order processing-related updates\n- Add manual verification step to all deployments\n- Increase worker capacity for order processing\n\n### When 100% of the budget is consumed:\n- Freeze all changes to order processing system\n- Invoke incident response process\n- Switch to simplified order processing flow\n- Require executive approval to resume normal operations",
+      "datasource": null,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 37
+      },
+      "id": 44,
+      "mode": "markdown",
+      "title": "Error Budget Policy",
+      "type": "text"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Success rate for order processing against 99.9% SLO target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 95,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 99.5
+              },
+              {
+                "color": "yellow",
+                "value": 99.8
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "id": 30,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[5m])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[5m]))",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing Success Rate (99.9% Target)",
+      "type": "gauge"
+    },
+    {
+      "aliasColors": {
+        "1h": "orange",
+        "24h": "blue",
+        "6h": "yellow",
+        "SLO Target": "red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "hiddenSeries": false,
+      "id": 32,
+      "legend": {
+        "avg": false,
+        "current": true,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "SLO Target",
+          "color": "#C4162A",
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 1
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[1h])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[1h]))",
+          "interval": "",
+          "legendFormat": "1h",
+          "refId": "A"
+        },
+        {
+          "expr": "100 * sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[6h])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[6h]))",
+          "interval": "",
+          "legendFormat": "6h",
+          "refId": "B"
+        },
+        {
+          "expr": "100 * sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[24h])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[24h]))",
+          "interval": "",
+          "legendFormat": "24h",
+          "refId": "C"
+        },
+        {
+          "expr": "99.9",
+          "interval": "",
+          "legendFormat": "SLO Target",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Order Processing Success Rate History",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percent",
+          "label": "Success Rate",
+          "logBase": 1,
+          "max": "100",
+          "min": "98",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "id": 34,
+      "panels": [],
+      "title": "Order Processing Time SLO",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Current latency SLO budget consumption (% of 5% budget used)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 46
+      },
+      "id": 46,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "clamp_max(100 * (sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[30d])) - sum(rate(order_processing_time_seconds_bucket{le=\"3.0\"}[30d]))) / (0.05 * sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[30d]))), 100)",
+          "interval": "",
+          "legendFormat": "Consumed",
+          "refId": "A"
+        }
+      ],
+      "title": "Processing Time Error Budget Consumption",
+      "type": "gauge"
+    },
+    {
+      "content": "# Order Processing Time Budget Policy\n\n**SLO: 95% of orders processed within 3 seconds**\n\n**Error Budget: 5% of orders can exceed the 3-second threshold**\n\n## Actions by Consumption Level\n\n### When 50% of the latency budget is consumed:\n- Analyze performance metrics to identify bottlenecks\n- Review recent code changes affecting order processing\n- Consider optimizing database queries\n\n### When 75% of the latency budget is consumed:\n- Scale up worker resources for order processing\n- Implement queue prioritization for orders\n- Add performance alerts for critical processing paths\n\n### When 100% of the latency budget is consumed:\n- Roll back recent changes affecting processing time\n- Implement circuit breakers to prevent cascading failures\n- Consider temporary feature reduction to improve core functionality\n- Daily status updates to leadership until resolved",
+      "datasource": null,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 46
+      },
+      "id": 48,
+      "mode": "markdown",
+      "title": "Processing Time Budget Policy",
+      "type": "text"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Measures the 95th percentile order processing time against our 3s SLO target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 10,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "orange",
+                "value": 2.5
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 46
+      },
+      "id": 36,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[5m])) by (le))",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing Time (p95, 3s target)",
+      "type": "gauge"
+    },
+    {
+      "aliasColors": {
+        "1h p95": "orange",
+        "24h p95": "blue",
+        "6h p95": "yellow",
+        "SLO Target": "red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "hiddenSeries": false,
+      "id": 38,
+      "legend": {
+        "avg": false,
+        "current": true,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "SLO Target",
+          "color": "#C4162A",
+          "dashes": true,
+          "fill": 0,
+          "linewidth": 1
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[1h])) by (le))",
+          "interval": "",
+          "legendFormat": "1h p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[6h])) by (le))",
+          "interval": "",
+          "legendFormat": "6h p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[24h])) by (le))",
+          "interval": "",
+          "legendFormat": "24h p95",
+          "refId": "C"
+        },
+        {
+          "expr": "3",
+          "interval": "",
+          "legendFormat": "SLO Target",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Order Processing Time History",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Processing Time (p95)",
+          "logBase": 1,
+          "max": "10",
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 62,
+      "panels": [],
+      "title": "COMPONENT HEALTH",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Success rate for order processing against 99.9% SLO target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 95,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 99.5
+              },
+              {
+                "color": "yellow",
+                "value": 99.8
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 24
+      },
+      "id": 30,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[5m])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[5m]))",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing Success",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Current error budget consumption as a percentage of total monthly budget",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 24
+      },
+      "id": 40,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "clamp_max(100 * (1 - (sum(rate(http_requests_total{endpoint=\"/orders\", status_code=~\"2..\"}[30d])) / sum(rate(http_requests_total{endpoint=\"/orders\"}[30d])))) / 0.001, 100)",
+          "interval": "",
+          "legendFormat": "Consumed",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Success Budget",
+      "type": "gauge"
+    },
+    {
+      "content": "### Order Processing Success SLO\n**Target:** 99.9% success rate\n**Error Budget:** 0.1% (43.2 minutes/month)",
+      "datasource": null,
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 64,
+      "mode": "markdown",
+      "title": "Order Processing SLO Definition",
+      "type": "text"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Measures the 95th percentile order processing time against our 3s SLO target",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 10,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "orange",
+                "value": 2.5
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 29
+      },
+      "id": 36,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(order_processing_time_seconds_bucket[5m])) by (le))",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Order Processing Time",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Current latency SLO budget consumption (% of 5% budget used)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 29
+      },
+      "id": 46,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "clamp_max(100 * (sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[30d])) - sum(rate(order_processing_time_seconds_bucket{le=\"3.0\"}[30d]))) / (0.05 * sum(rate(order_processing_time_seconds_bucket{le=\"+Inf\"}[30d]))), 100)",
+          "interval": "",
+          "legendFormat": "Consumed",
+          "refId": "A"
+        }
+      ],
+      "title": "Processing Time Budget",
+      "type": "gauge"
+    },
+    {
+      "content": "### Order Processing Time SLO\n**Target:** 95% of orders processed within 3 seconds\n**Error Budget:** 5% can exceed threshold",
+      "datasource": null,
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "id": 66,
+      "mode": "markdown",
+      "title": "Processing Time SLO Definition",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 68,
+      "panels": [],
+      "title": "ERROR BUDGET POLICIES",
+      "type": "row"
+    },
+    {
+      "content": "# Order Processing Error Budget Policy\n\n**SLO: 99.9% order processing success rate (monthly)**\n\n**Error Budget: 0.1% = 43.2 minutes of processing failures per month**\n\n## Actions by Consumption Level\n\n### When 50% of the monthly error budget is consumed:\n- Investigate database and worker queue performance metrics\n- Enhance monitoring of order processing pipeline\n- Alert engineering leadership about potential issues\n\n### When 75% of the budget is consumed:\n- Deploy only critical order processing-related updates\n- Add manual verification step to all deployments\n- Increase worker capacity for order processing\n\n### When 100% of the budget is consumed:\n- Freeze all changes to order processing system\n- Invoke incident response process\n- Switch to simplified order processing flow\n- Require executive approval to resume normal operations",
+      "datasource": null,
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "id": 44,
+      "mode": "markdown",
+      "title": "Success Rate Error Budget Policy",
+      "type": "text"
+    },
+    {
+      "content": "# Order Processing Time Budget Policy\n\n**SLO: 95% of orders processed within 3 seconds**\n\n**Error Budget: 5% of orders can exceed the 3-second threshold**\n\n## Actions by Consumption Level\n\n### When 50% of the latency budget is consumed:\n- Analyze performance metrics to identify bottlenecks\n- Review recent code changes affecting order processing\n- Consider optimizing database queries\n\n### When 75% of the latency budget is consumed:\n- Scale up worker resources for order processing\n- Implement queue prioritization for orders\n- Add performance alerts for critical processing paths\n\n### When 100% of the latency budget is consumed:\n- Roll back recent changes affecting processing time\n- Implement circuit breakers to prevent cascading failures\n- Consider temporary feature reduction to improve core functionality\n- Daily status updates to leadership until resolved",
+      "datasource": null,
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "id": 48,
+      "mode": "markdown",
+      "title": "Processing Time Budget Policy",
+      "type": "text"
     }
   ],
   "refresh": "10s",
