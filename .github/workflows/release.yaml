@@ -37,7 +37,7 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
-          pip install -r requirements.txt
+          pip install -r src/requirements.txt
 
       # Week 2: Add dependency scanning
       # 👇 Uncomment this step for Week 2: Basic Security Scanning
