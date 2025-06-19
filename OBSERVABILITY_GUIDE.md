@@ -47,10 +47,12 @@ docker-compose ps
 ### 3. Generate Test Traffic
 ```bash
 # Single purchase journey with tracing
-python3 scripts/trace_purchase_journey.py
+./demo_request_correlation.sh
 
-# Load test with multiple journeys
-python3 scripts/trace_purchase_journey.py load-test
+# Manual checkout request
+curl -X POST http://localhost:8000/checkout \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 1}'
 ```
 
 ## 📊 Complete Purchase Journey Dashboard
@@ -89,46 +91,57 @@ python3 scripts/trace_purchase_journey.py load-test
 
 **Why it matters**: Deep-dive debugging capability for specific user requests.
 
-## 🔗 Correlation ID Pattern
+## 🔗 Request Correlation Pattern
 
 ### How It Works
-Every request gets a unique correlation ID that follows it through all services:
+Our system uses **OpenTelemetry trace IDs** to correlate requests across all system components:
 
 ```python
-# 1. Generated at API entry point
-correlation_id = str(uuid.uuid4())
+# 1. OpenTelemetry automatically generates trace IDs
+from opentelemetry import trace
 
-# 2. Added to all logs
-logger.info("Purchase initiated", correlation_id=correlation_id)
+# 2. Trace IDs are included in structured logs
+logger.info("Purchase initiated", 
+           order_id=order.id, 
+           # trace_id automatically included by OpenTelemetry
+           )
 
-# 3. Propagated to downstream services
-headers = {'X-Correlation-ID': correlation_id}
-
-# 4. Included in traces
-span.set_attribute("correlation_id", correlation_id)
+# 3. Spans capture operation details
+with tracer.start_as_current_span("checkout_order") as span:
+    span.set_attribute("order.product_id", order.product_id)
+    span.set_attribute("order.quantity", order.quantity)
 ```
 
 ### Tracing a Complete Journey
 
-#### Step 1: API Request
+#### Step 1: Generate a Request
 ```bash
+# Use our demo script
+./demo_request_correlation.sh
+
+# Or make a manual request
 curl -X POST http://localhost:8000/checkout \
-  -H "X-Correlation-ID: abc-123-def" \
   -H "Content-Type: application/json" \
   -d '{"product_id": 1, "quantity": 1}'
 ```
 
 #### Step 2: Find in Logs
 ```bash
-# Query logs by correlation ID
-docker logs kodekloud-record-store-api | grep "abc-123-def"
+# Query logs by order ID (from demo script output)
+docker logs kodekloud-record-store-api | grep "order_id.*7"
+
+# Or search for recent checkout events
+docker logs kodekloud-record-store-api | grep "checkout" | tail -5
 ```
 
 #### Step 3: View in Jaeger
-Visit: `http://localhost:16686/trace/abc-123-def`
+1. Visit: `http://localhost:16686`
+2. Search service: `kodekloud-record-store-api`
+3. Search operation: `checkout_order`
+4. Look for traces with matching order_id
 
 #### Step 4: Check Dashboard
-Filter Grafana dashboard by trace ID using the template variable.
+Visit the "KodeKloud Records Store - End-to-End Purchase Journey" dashboard in Grafana.
 
 ## 🎯 Key Observability Patterns Demonstrated
 
@@ -213,12 +226,12 @@ Total end-to-end time: ~5250ms
 ```yaml
 # High checkout error rate
 alert: HighCheckoutErrorRate
-expr: rate(http_requests_total{handler="/checkout",code=~"[45].."}[5m]) / rate(http_requests_total{handler="/checkout"}[5m]) > 0.05
+expr: rate(http_requests_total{endpoint="/checkout",status_code=~"[45].."}[5m]) / rate(http_requests_total{endpoint="/checkout"}[5m]) > 0.05
 for: 2m
 
 # Slow checkout performance  
 alert: SlowCheckoutPerformance
-expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler="/checkout"}[5m])) > 1.0
+expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{endpoint="/checkout"}[5m])) > 1.0
 for: 5m
 
 # Background job failures
@@ -230,19 +243,29 @@ for: 1m
 ## 🎓 Learning Exercises
 
 ### Exercise 1: Follow a Purchase Journey
-1. Use the tracer script to generate a purchase
-2. Find the correlation ID in logs
-3. View the complete trace in Jaeger
-4. Analyze performance in Grafana
+1. Run: `./demo_request_correlation.sh`
+2. Note the order ID from the output
+3. Find the trace ID in the application logs
+4. View the complete trace in Jaeger
+5. Analyze performance in Grafana dashboard
 
 ### Exercise 2: Simulate a Failure
 1. Stop the database: `docker stop kodekloud-record-store-db`
-2. Generate traffic: `python3 scripts/trace_purchase_journey.py`
+2. Generate traffic: `./demo_request_correlation.sh`
 3. Observe how errors propagate through the system
 4. See how the dashboard shows the impact
+5. Restart database: `docker start kodekloud-record-store-db`
 
 ### Exercise 3: Load Testing
-1. Run: `python3 scripts/trace_purchase_journey.py load-test`
+1. Generate multiple requests:
+   ```bash
+   for i in {1..10}; do
+     curl -X POST http://localhost:8000/checkout \
+       -H "Content-Type: application/json" \
+       -d '{"product_id": 1, "quantity": 1}'
+     sleep 1
+   done
+   ```
 2. Watch the dashboard update in real-time
 3. Identify any performance bottlenecks
 4. Correlate metrics, logs, and traces
@@ -286,10 +309,11 @@ predict_linear(rabbitmq_queue_messages_ready[30m], 3600) > 1000
 
 ## 🎯 Key Takeaways
 
-1. **Correlation IDs are essential** for distributed debugging
+1. **OpenTelemetry trace IDs** provide automatic request correlation across all system components
 2. **End-to-end dashboards** provide business context to technical metrics
 3. **The three pillars work together** - metrics show what, logs show why, traces show where
 4. **Business metrics matter** as much as technical metrics
-5. **Automation is key** for complex distributed systems
+5. **Structured logging** with consistent labeling enables powerful correlation
+6. **Automation is key** for complex distributed systems
 
-This setup demonstrates production-ready observability patterns that scale from small applications to large distributed systems. 
+This setup demonstrates production-ready observability patterns that scale from small applications to large distributed systems. The correlation approach shown here works for both monolithic and microservice architectures. 
