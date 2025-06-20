@@ -22,7 +22,9 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     # Week 1: Overly broad permissions (SECURITY ISSUE!)
-    permissions: write-all  # 🚨 Too broad - fix in Week 3
+    permissions:
+      contents: read        # Required for actions checkout@v3
+      actions: read  
 
     steps:
       - name: Checkout code
@@ -39,8 +41,8 @@ jobs:
           source venv/bin/activate
           pip install -r src/requirements.txt
 
-      Week 2: Add dependency scanning
-      👇 Uncomment this step for Week 2: Basic Security Scanning
+      # Week 2: Add dependency scanning
+      # 👇 Uncomment this step for Week 2: Basic Security Scanning
       - name: Install Security Tools
         run: |
           source venv/bin/activate
