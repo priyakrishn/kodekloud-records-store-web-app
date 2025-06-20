@@ -1,0 +1,37 @@
+name: Capstone Test Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Test message'
+        required: true
+        default: '🎯 Capstone project webhook test'
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Notification
+        run: |
+          echo "📤 Testing capstone webhook..."
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "🎯 Capstone Project Update",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Message", "value": "${{ github.event.inputs.message }}", "short": false},
+                  {"title": "Student", "value": "${{ github.actor }}", "short": true},
+                  {"title": "Project", "value": "SRE Fundamentals Capstone", "short": true}
+                ]
+              }]
+            }' \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
+            
+      - name: Verify Webhook Success
+        run: |
+          echo "✅ Capstone webhook test completed"
+          echo "If you received a notification, your webhook is configured correctly!"
+          echo "This demonstrates secure secret management from Module 6." 
