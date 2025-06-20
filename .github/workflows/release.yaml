@@ -39,18 +39,18 @@ jobs:
           source venv/bin/activate
           pip install -r src/requirements.txt
 
-      # Week 2: Add dependency scanning
-      # 👇 Uncomment this step for Week 2: Basic Security Scanning
-      # - name: Install Security Tools
-      #   run: |
-      #     source venv/bin/activate
-      #     pip install pip-audit
+      Week 2: Add dependency scanning
+      👇 Uncomment this step for Week 2: Basic Security Scanning
+      - name: Install Security Tools
+        run: |
+          source venv/bin/activate
+          pip install pip-audit
 
-      # - name: Audit Dependencies for Vulnerabilities
-      #   run: |
-      #     source venv/bin/activate
-      #     pip-audit --strict
-      #     # This will fail if vulnerabilities are found
+      - name: Audit Dependencies for Vulnerabilities
+        run: |
+          source venv/bin/activate
+          pip-audit --strict
+          # This will fail if vulnerabilities are found
 
       - name: Run tests
         run: |
