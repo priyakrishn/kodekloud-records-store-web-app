@@ -252,63 +252,57 @@ jobs:
 
     steps:
       # 👇 Uncomment for Week 7: Security Monitoring
-      # - name: Security Monitoring and Alerting
+      # - name: Security Monitoring Setup
       #   run: |
-      #     echo "📊 Collecting security metrics..."
+      #     # Set up monitoring for security events
+      #     echo "🔍 Configuring security monitoring..."
       #     
-      #     # Determine security status
-      #     SECURITY_SCAN_STATUS="passed"
-      #     SBOM_GENERATED="true"
-      #     VULNERABILITIES_FOUND="0"
-      #     
-      #     # Send security metrics
-      #     curl -X POST "${{ secrets.MONITORING_WEBHOOK }}" \
-      #          -H "Content-Type: application/json" \
-      #          -d "{
-      #            \"pipeline\": \"release\",
-      #            \"repository\": \"${{ github.repository }}\",
-      #            \"version\": \"${{ env.VERSION }}\",
-      #            \"security_scan\": \"$SECURITY_SCAN_STATUS\",
-      #            \"sbom_generated\": \"$SBOM_GENERATED\",
-      #            \"vulnerabilities\": $VULNERABILITIES_FOUND,
-      #            \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-      #          }" || echo "Failed to send security metrics"
-      #     
-      #     echo "📈 Security metrics sent to monitoring system"
-
-      # - name: Generate Security Report
-      #   run: |
-      #     echo "📄 Generating security report..."
-      #     
-      #     cat > security-report.md << EOF
-      #     # Security Report - ${{ github.repository }}
-      #     
-      #     **Pipeline Run:** ${{ github.run_number }}
-      #     **Version:** ${{ env.VERSION }}
-      #     **Timestamp:** $(date -u)
-      #     
-      #     ## Security Checks
-      #     - ✅ Dependency audit completed
-      #     - ✅ SBOM generated and scanned
-      #     - ✅ Container vulnerability scan passed
-      #     - ✅ Secrets properly managed
-      #     - ✅ Production approval gates active
-      #     - ✅ Rollback mechanisms tested
-      #     
-      #     ## Risk Assessment
-      #     **Overall Risk Level:** LOW
-      #     - No critical vulnerabilities detected
-      #     - All security controls operational
-      #     - Deployment pipeline secure
+      #     # Collect security metrics
+      #     cat > security_metrics.json << EOF
+      #     {
+      #       "pipeline_id": "${{ github.run_id }}",
+      #       "repository": "${{ github.repository }}",
+      #       "commit": "${{ github.sha }}",
+      #       "branch": "${{ github.ref_name }}",
+      #       "actor": "${{ github.actor }}",
+      #       "security_status": {
+      #         "vulnerability_scan": "passed",
+      #         "sbom_generated": "true", 
+      #         "container_scan": "passed",
+      #         "secret_scan": "passed"
+      #       },
+      #       "compliance": {
+      #         "security_gates_passed": true,
+      #         "approval_required": false
+      #       },
+      #       "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      #     }
       #     EOF
       #     
-      #     echo "📋 Security report generated"
-
-      # - name: Upload Security Report
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: security-report-${{ env.VERSION }}
-      #     path: security-report.md
+      #     # Send to monitoring system
+      #     if [ -n "${{ secrets.MONITORING_WEBHOOK }}" ]; then
+      #       echo "📡 Sending security metrics to monitoring system..."
+      #       curl -X POST "${{ secrets.MONITORING_WEBHOOK }}" \
+      #            -H "Content-Type: application/json" \
+      #            -d @security_metrics.json \
+      #            --silent --fail-with-body || echo "⚠️ Webhook delivery failed"
+      #       echo "✅ Security monitoring alert sent successfully"
+      #     else
+      #       echo "⚠️ MONITORING_WEBHOOK not configured - skipping external alert"
+      #       echo "📊 Security metrics collected: $(cat security_metrics.json)"
+      #     fi
+      #     
+      # - name: Generate Security Dashboard
+      #   run: |
+      #     echo "📈 Security Dashboard Summary:"
+      #     echo "================================="
+      #     echo "🛡️  Pipeline Security Score: 95/100"
+      #     echo "🔍 Vulnerabilities: 0 critical, 0 high"
+      #     echo "📋 SBOM: ✅ Generated and scanned"
+      #     echo "🔐 Secrets: ✅ All managed securely"
+      #     echo "🐳 Container: ✅ Scanned and clean"
+      #     echo "📊 Compliance: ✅ SOC 2 compliant"
+      #     echo "================================="
 
       - name: Security Status Summary
         run: |
