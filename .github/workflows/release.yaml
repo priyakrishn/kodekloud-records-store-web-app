@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - secure-release-test
   pull_request:
     types: [closed]
     branches:
@@ -41,16 +42,16 @@ jobs:
 
       # Week 2: Add dependency scanning
       # 👇 Uncomment this step for Week 2: Basic Security Scanning
-      # - name: Install Security Tools
-      #   run: |
-      #     source venv/bin/activate
-      #     pip install pip-audit
+      - name: Install Security Tools
+        run: |
+          source venv/bin/activate
+          pip install pip-audit
 
-      # - name: Audit Dependencies for Vulnerabilities
-      #   run: |
-      #     source venv/bin/activate
-      #     pip-audit --strict
-      #     # This will fail if vulnerabilities are found
+      - name: Audit Dependencies for Vulnerabilities
+        run: |
+          source venv/bin/activate
+          pip-audit --strict
+          # This will fail if vulnerabilities are found
 
       - name: Run tests
         run: |
