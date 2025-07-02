@@ -12,10 +12,10 @@ on:
 
 # Week 3: Restrict permissions to least privilege
 # 👇 Uncomment to apply least privilege permissions (Week 3)
-# permissions:
-#   contents: read      # Can read repository
-#   packages: write     # Can push Docker images
-#   id-token: write     # Can authenticate with cloud
+permissions:
+  contents: read      # Can read repository
+  packages: write     # Can push Docker images
+  id-token: write     # Can authenticate with cloud
 #   # Everything else: denied by default
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     # Week 1: Overly broad permissions (SECURITY ISSUE!)
-    permissions: write-all  # 🚨 Too broad - fix in Week 3
+    # permissions: write-all  # 🚨 Too broad - fix in Week 3
 
     steps:
       - name: Checkout code
@@ -69,17 +69,17 @@ jobs:
 
       # Week 4: Generate Software Bill of Materials (SBOM)
       # 👇 Uncomment for Week 4: SBOM Generation
-      # - name: Generate Software Bill of Materials
-      #   run: |
-      #     curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-      #     syft . -o cyclonedx-json > sbom.json
-      #     echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
+      - name: Generate Software Bill of Materials
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft . -o cyclonedx-json > sbom.json
+          echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
 
-      # - name: Upload SBOM as Artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: software-bill-of-materials
-      #     path: sbom.json
+      - name: Upload SBOM as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: software-bill-of-materials
+          path: sbom.json
 
       - name: Get version from Git commit
         id: get_version
