@@ -24,7 +24,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 3: Uncomment to add SBOM generation
       # 👇 Uncomment this section in Step 3: Software Bill of Materials
@@ -73,7 +73,7 @@ jobs:
           echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
 
       - name: Upload SBOM as Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4+
         with:
           name: software-bill-of-materials
           path: sbom.json
