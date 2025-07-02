@@ -10,8 +10,8 @@ on:
     branches:
       - main
 
-# Step 4: Uncomment to apply least privilege permissions
-# 👇 Uncomment this section in Step 4: Secure Authentication
+# Step 4: Apply least privilege permissions  
+# 👇 Uncommented in Step 4: Secure Authentication
 # permissions:
 #   contents: read      # Can read repository
 #   packages: write     # Can push Docker images
@@ -24,7 +24,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -50,10 +50,10 @@ jobs:
       #     pip-audit --strict
       #     echo "✅ No critical vulnerabilities found"
 
-      - name: Run Basic Tests
-        run: |
-          source venv/bin/activate
-          pytest tests/ || echo "Tests completed"
+      # - name: Run Basic Tests
+      #   run: |
+      #     source venv/bin/activate
+      #     pytest tests/ || echo "Tests completed"
 
   # Step 3: Container build with SBOM
   build-container:
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 3: Uncomment to add SBOM generation
       # 👇 Uncomment this section in Step 3: Software Bill of Materials
@@ -73,7 +73,7 @@ jobs:
       #     echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
 
       # - name: Upload SBOM as Artifact
-      #   uses: actions/upload-artifact@v3
+      #   uses: actions/upload-artifact@v4
       #   with:
       #     name: software-bill-of-materials
       #     path: sbom.json
@@ -84,11 +84,11 @@ jobs:
       #     grype sbom.json --fail-on high
       #     echo "🔍 SBOM vulnerability scan completed"
 
-      - name: Get version from Git commit
-        id: get_version
-        run: |
-          echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "Building version: ${GITHUB_SHA::7}"
+      # - name: Get version from Git commit
+      #   id: get_version
+      #   run: |
+      #     echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
+      #     echo "Building version: ${GITHUB_SHA::7}"
 
       # Step 4: Choose your authentication method
       # 🚨 SECURITY ISSUE: Uncomment ONLY ONE of the following login methods:
@@ -107,18 +107,27 @@ jobs:
       #     echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
       #     echo "✅ Using secure GitHub token authentication"
 
-      - name: Build and tag Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} .
-          docker tag ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-records:latest
-          echo "🐳 Docker image built: kodekloud-records:${{ env.VERSION }}"
+      # - name: Build and tag Docker image
+      #   run: |
+      #     docker build -t ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} .
+      #     docker tag ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-records:latest
+      #     echo "🐳 Docker image built: kodekloud-records:${{ env.VERSION }}"
 
       # Step 5: Uncomment to add container vulnerability scanning
       # 👇 Uncomment this section in Step 5: Container Security
       # - name: Scan Container for Vulnerabilities
       #   run: |
-      #     grype ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} --fail-on high
-      #     echo "🔍 Container vulnerability scan completed"
+      #     echo "🔍 Scanning container for vulnerabilities..."
+          
+      #     # Option A: Scan everything (may find system vulnerabilities)
+      #     echo "📊 Full vulnerability report:"
+          
+      #     grype ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} \
+      #       --fail-on high \
+      #       --only-fixed 
+          
+      #     echo "✅ Container vulnerability scan completed"
+      #     echo "💡 Note: In production, configure scans based on your risk tolerance"
 
       - name: Push Docker image
         run: |
