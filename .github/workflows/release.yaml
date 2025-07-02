@@ -101,7 +101,7 @@ jobs:
       #     echo "⚠️  Using hardcoded credentials - SECURITY RISK!"
 
       # GOOD: Uncomment for Step 4: Secure Authentication
-      👇 Uncomment this section in Step 4 and comment out the above
+      # 👇 Uncomment this section in Step 4 and comment out the above
       - name: Log in to GitHub Container Registry (SECURE - Step 4)
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
