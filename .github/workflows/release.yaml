@@ -73,7 +73,7 @@ jobs:
           echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
 
       - name: Upload SBOM as Artifact
-        uses: actions/upload-artifact@v4+
+        uses: actions/upload-artifact@v4
         with:
           name: software-bill-of-materials
           path: sbom.json
