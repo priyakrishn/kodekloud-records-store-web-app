@@ -1,4 +1,4 @@
-name: Secure Release Pipeline - Progressive Security Evolution
+name: Secure Release Pipeline - Step-by-Step Security
 
 on:
   push:
@@ -10,21 +10,18 @@ on:
     branches:
       - main
 
-# Week 3: Restrict permissions to least privilege
-# 👇 Uncomment to apply least privilege permissions (Week 3)
-permissions:
-  contents: read      # Can read repository
-  packages: write     # Can push Docker images
-  id-token: write     # Can authenticate with cloud
-#   # Everything else: denied by default
+# Step 4: Uncomment to apply least privilege permissions
+# 👇 Uncomment this section in Step 4: Secure Authentication
+# permissions:
+#   contents: read      # Can read repository
+#   packages: write     # Can push Docker images
+#   id-token: write     # Can authenticate with cloud
 
 jobs:
-  # Week 1: Basic build and test
+  # Step 1: Basic build and test (ALWAYS ENABLED)
   build-and-test:
     runs-on: ubuntu-latest
-    # Week 1: Overly broad permissions (SECURITY ISSUE!)
-    # permissions: write-all  # 🚨 Too broad - fix in Week 3
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -40,26 +37,26 @@ jobs:
           source venv/bin/activate
           pip install -r src/requirements.txt
 
-      # Week 2: Add dependency scanning
-      # 👇 Uncomment this step for Week 2: Basic Security Scanning
-      - name: Install Security Tools
-        run: |
-          source venv/bin/activate
-          pip install pip-audit
+      # Step 2: Uncomment to add dependency vulnerability scanning
+      # 👇 Uncomment this section in Step 2: Dependency Scanning
+      # - name: Install Security Tools
+      #   run: |
+      #     source venv/bin/activate
+      #     pip install pip-audit
 
-      - name: Audit Dependencies for Vulnerabilities
-        run: |
-          source venv/bin/activate
-          pip-audit --strict
-          # This will fail if vulnerabilities are found
+      # - name: Scan for Vulnerable Dependencies
+      #   run: |
+      #     source venv/bin/activate
+      #     pip-audit --strict
+      #     echo "✅ No critical vulnerabilities found"
 
-      - name: Run tests
+      - name: Run Basic Tests
         run: |
           source venv/bin/activate
           pytest tests/ || echo "Tests completed"
 
-  # Week 4: Enhanced build with SBOM and vulnerability scanning
-  docker-build:
+  # Step 3: Container build with SBOM
+  build-container:
     needs: build-and-test
     runs-on: ubuntu-latest
 
@@ -67,19 +64,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Week 4: Generate Software Bill of Materials (SBOM)
-      # 👇 Uncomment for Week 4: SBOM Generation
-      - name: Generate Software Bill of Materials
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-          syft . -o cyclonedx-json > sbom.json
-          echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
+      # Step 3: Uncomment to add SBOM generation
+      # 👇 Uncomment this section in Step 3: Software Bill of Materials
+      # - name: Generate Software Bill of Materials (SBOM)
+      #   run: |
+      #     curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      #     syft . -o cyclonedx-json > sbom.json
+      #     echo "📋 SBOM generated with $(jq '.components | length' sbom.json) components"
 
-      - name: Upload SBOM as Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: software-bill-of-materials
-          path: sbom.json
+      # - name: Upload SBOM as Artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: software-bill-of-materials
+      #     path: sbom.json
+
+      # - name: Scan SBOM for Vulnerabilities
+      #   run: |
+      #     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      #     grype sbom.json --fail-on high
+      #     echo "🔍 SBOM vulnerability scan completed"
 
       - name: Get version from Git commit
         id: get_version
@@ -87,23 +90,22 @@ jobs:
           echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
           echo "Building version: ${GITHUB_SHA::7}"
 
-      # Week 3: Replace hardcoded credentials with GitHub Secrets
-      # Week 1: SECURITY ISSUE - Hardcoded credentials!
-      # 🚨 Uncomment ONLY ONE of the following login methods:
+      # Step 4: Choose your authentication method
+      # 🚨 SECURITY ISSUE: Uncomment ONLY ONE of the following login methods:
 
-      # BAD (Week 1): Hardcoded credentials
-      - name: Log in to Registry (INSECURE - Week 1)
+      # BAD: Hardcoded credentials (Step 1 - shows the problem)
+      - name: Log in to Registry (INSECURE - Step 1)
         run: |
           # 🚨 SECURITY ISSUE: Hardcoded password!
           echo "password123" | docker login ghcr.io -u admin --password-stdin
           echo "⚠️  Using hardcoded credentials - SECURITY RISK!"
 
-      # GOOD (Week 3+): GitHub Secrets
-      # 👇 Uncomment for Week 3: Secret Management
-      - name: Log in to GitHub Container Registry (SECURE - Week 3+)
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-          echo "✅ Using secure GitHub token authentication"
+      # GOOD: Uncomment for Step 4: Secure Authentication
+      # 👇 Uncomment this section in Step 4 and comment out the above
+      # - name: Log in to GitHub Container Registry (SECURE - Step 4)
+      #   run: |
+      #     echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+      #     echo "✅ Using secure GitHub token authentication"
 
       - name: Build and tag Docker image
         run: |
@@ -111,20 +113,12 @@ jobs:
           docker tag ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-records:latest
           echo "🐳 Docker image built: kodekloud-records:${{ env.VERSION }}"
 
-      # Week 4: Scan SBOM for vulnerabilities
-      # 👇 Uncomment for Week 4: Vulnerability Scanning
-      - name: Scan SBOM for Vulnerabilities
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-          grype sbom.json --fail-on high
-          echo "🔍 Vulnerability scan completed"
-
-      # Week 4: Container vulnerability scanning
-      # 👇 Uncomment for Week 4: Container Security Scanning
-      - name: Scan Docker Image for Vulnerabilities
-        run: |
-          grype ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} --fail-on high
-          echo "🔍 Container vulnerability scan completed"
+      # Step 5: Uncomment to add container vulnerability scanning
+      # 👇 Uncomment this section in Step 5: Container Security
+      # - name: Scan Container for Vulnerabilities
+      #   run: |
+      #     grype ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} --fail-on high
+      #     echo "🔍 Container vulnerability scan completed"
 
       - name: Push Docker image
         run: |
@@ -132,193 +126,77 @@ jobs:
           docker push ghcr.io/${{ github.repository }}/kodekloud-records:latest
           echo "📦 Images pushed to registry"
 
-  # Week 5: Staging deployment with testing
+  # Step 6: Deploy to staging
   deploy-staging:
-    needs: docker-build
+    needs: build-container
     runs-on: ubuntu-latest
-    # Week 5: Add environment protection
-    # 👇 Uncomment for Week 5: Environment Gating
-    environment: staging
+    # Step 6: Uncomment to add environment protection
+    # 👇 Uncomment this line in Step 6: Environment-based Deployments
+    # environment: staging
 
     steps:
-      - name: Deploy to Staging Environment
+      - name: Deploy to Staging
         run: |
-          echo "🚀 Deploying kodekloud-records:${{ env.VERSION }} to Staging"
-          echo "Staging URL: http://staging.kodekloud-records.com"
-          # Replace with actual deployment command
-          sleep 5  # Simulate deployment time
+          echo "🚀 Deploying to Staging Environment"
+          echo "Version: ${{ env.VERSION }}"
+          echo "URL: http://staging.kodekloud-records.com"
+          # In real world: kubectl apply -f k8s/staging/ or helm upgrade
+          sleep 3
 
-      - name: Run Integration Tests in Staging
+      - name: Basic Health Check
         run: |
-          echo "🧪 Running integration tests in staging..."
-          # Simulate health check
-          echo "Health check: /health endpoint"
-          echo "API check: /api/records endpoint"
-          echo "Database connectivity: ✅"
-          echo "✅ All staging tests passed"
+          echo "🏥 Running health checks..."
+          echo "✅ Application is responding"
+          echo "✅ Database connection OK"
+          # In real world: curl -f $STAGING_URL/health
 
-      # Week 6: Enhanced health checks
-      # 👇 Uncomment for Week 6: Comprehensive Health Checks
-      - name: Comprehensive Health Check
-        run: |
-          echo "🏥 Running comprehensive health checks..."
-          
-          # API health check
-          curl -f http://staging.kodekloud-records.com/health || exit 1
-          
-          # Database health check
-          curl -f http://staging.kodekloud-records.com/api/health/db || exit 1
-          
-          # Performance check
-          response_time=$(curl -o /dev/null -s -w '%{time_total}' http://staging.kodekloud-records.com/api/records)
-          if (( $(echo "$response_time > 2.0" | bc -l) )); then
-            echo "❌ Response time too slow: ${response_time}s"
-            exit 1
-          fi
-          
-          echo "✅ All health checks passed (${response_time}s response time)"
-
-  # Week 5: Production deployment with approval gates
+  # Step 6: Deploy to production
   deploy-production:
     needs: deploy-staging
     runs-on: ubuntu-latest
-    # Week 5: Require manual approval for production
-    # 👇 Uncomment for Week 5: Production Approval Gates
-    environment: production
+    # Step 6: Uncomment to add environment protection
+    # 👇 Uncomment this line in Step 6: Environment-based Deployments
+    # environment: production
 
     steps:
-      - name: Deploy to Production Environment
+      - name: Deploy to Production
         run: |
-          echo "🚀 Deploying kodekloud-records:${{ env.VERSION }} to Production"
-          echo "Production URL: https://kodekloud-records.com"
-          # Replace with actual deployment command
-          sleep 10  # Simulate production deployment time
-
-      # Week 6: Deployment with automatic rollback
-      # 👇 Uncomment for Week 6: Automated Rollback
-      - name: Deploy with Rollback Safety Net
-        run: |
-          echo "🚀 Starting production deployment with rollback protection..."
-          
-          # Store current version for rollback
-          PREVIOUS_VERSION=$(docker images --format "{{.Tag}}" ghcr.io/${{ github.repository }}/kodekloud-records | head -2 | tail -1)
-          echo "Previous version for rollback: $PREVIOUS_VERSION"
-          
-          # Deploy new version
-          echo "Deploying new version: ${{ env.VERSION }}"
-          # docker run -d --name kodekloud-records-new ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }}
-          
-          # Wait for startup
-          echo "Waiting for application startup..."
-          sleep 30
-          
-          # Health check with automatic rollback
-          if ! curl -f https://kodekloud-records.com/health; then
-            echo "❌ Health check failed, initiating automatic rollback..."
-            # docker stop kodekloud-records-new
-            # docker run -d --name kodekloud-records ghcr.io/${{ github.repository }}/kodekloud-records:$PREVIOUS_VERSION
-            echo "🔄 Rollback completed to version: $PREVIOUS_VERSION"
-            exit 1
-          fi
-          
-          echo "✅ Deployment successful!"
-
-      - name: Post-deployment Health Check
-        run: |
-          echo "🏥 Running production health checks..."
-          echo "API Health: ✅"
-          echo "Database: ✅"
-          echo "External Services: ✅"
-          echo "✅ Production deployment verified"
-
-      # Week 6: Rollback on failure
-      # 👇 Uncomment for Week 6: Failure Rollback
-      - name: Rollback on Deployment Failure
-        if: failure()
-        run: |
-          echo "❌ Deployment failed, initiating rollback..."
-          echo "🔄 Rolling back to previous known good version..."
-          # docker pull ghcr.io/${{ github.repository }}/kodekloud-records:latest-stable
-          # kubectl rollout undo deployment/kodekloud-records
-          echo "✅ Rollback completed"
-          
-          # Notify team
-          echo "📧 Sending deployment failure notification..."
-
-  # Week 7: Security monitoring and reporting
-  security-monitoring:
-    needs: [build-and-test, docker-build]
-    runs-on: ubuntu-latest
-    if: always()  # Run even if other jobs fail
-
-    steps:
-      # 👇 Uncomment for Week 7: Security Monitoring
-      - name: Security Monitoring Setup
-        run: |
-          # Set up monitoring for security events
-          echo "🔍 Configuring security monitoring..."
-          
-          # Collect security metrics
-          cat > security_metrics.json << EOF
-          {
-            "pipeline_id": "${{ github.run_id }}",
-            "repository": "${{ github.repository }}",
-            "commit": "${{ github.sha }}",
-            "branch": "${{ github.ref_name }}",
-            "actor": "${{ github.actor }}",
-            "security_status": {
-              "vulnerability_scan": "passed",
-              "sbom_generated": "true", 
-              "container_scan": "passed",
-              "secret_scan": "passed"
-            },
-            "compliance": {
-              "security_gates_passed": true,
-              "approval_required": false
-            },
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          
-          # Send to monitoring system
-          if [ -n "${{ secrets.MONITORING_WEBHOOK }}" ]; then
-            echo "📡 Sending security metrics to monitoring system..."
-            curl -X POST "${{ secrets.MONITORING_WEBHOOK }}" \
-                 -H "Content-Type: application/json" \
-                 -d @security_metrics.json \
-                 --silent --fail-with-body || echo "⚠️ Webhook delivery failed"
-            echo "✅ Security monitoring alert sent successfully"
-          else
-            echo "⚠️ MONITORING_WEBHOOK not configured - skipping external alert"
-            echo "📊 Security metrics collected: $(cat security_metrics.json)"
-          fi
-          
-      - name: Generate Security Dashboard
-        run: |
-          echo "📈 Security Dashboard Summary:"
-          echo "================================="
-          echo "🛡️  Pipeline Security Score: 95/100"
-          echo "🔍 Vulnerabilities: 0 critical, 0 high"
-          echo "📋 SBOM: ✅ Generated and scanned"
-          echo "🔐 Secrets: ✅ All managed securely"
-          echo "🐳 Container: ✅ Scanned and clean"
-          echo "📊 Compliance: ✅ SOC 2 compliant"
-          echo "================================="
-
-      - name: Security Status Summary
-        run: |
-          echo "🔒 Security Pipeline Status Summary"
-          echo "=================================="
-          echo "Pipeline: Secure Release Pipeline"
+          echo "🚀 Deploying to Production Environment"
           echo "Version: ${{ env.VERSION }}"
-          echo "Security Level: Week 1 (Basic)"
+          echo "URL: https://kodekloud-records.com"
+          # In real world: kubectl apply -f k8s/production/ or helm upgrade
+          sleep 5
+
+      - name: Verify Production Deployment
+        run: |
+          echo "✅ Production deployment completed"
+          echo "✅ Application is healthy"
+          # In real world: curl -f $PRODUCTION_URL/health
+
+  # Security summary (always runs)
+  security-summary:
+    needs: [build-and-test, build-container]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Security Pipeline Progress Report
+        run: |
+          echo "🔒 Security Pipeline Learning Progress"
+          echo "====================================="
+          echo "✅ Step 1: Basic build and test - COMPLETE"
           echo ""
-          echo "🎯 To improve security, uncomment features week by week:"
-          echo "  Week 2: Dependency scanning"
-          echo "  Week 3: Secret management + least privilege"
-          echo "  Week 4: SBOM generation + vulnerability scanning"
-          echo "  Week 5: Environment gating + approval workflows"
-          echo "  Week 6: Automated rollback + health checks"
-          echo "  Week 7: Security monitoring + reporting"
+          echo "🎯 Next Steps to Secure Your Pipeline:"
+          echo "  Step 2: Uncomment dependency vulnerability scanning"
+          echo "  Step 3: Uncomment SBOM generation and scanning"
+          echo "  Step 4: Replace hardcoded credentials with GitHub secrets"
+          echo "  Step 5: Uncomment container vulnerability scanning"
+          echo "  Step 6: Uncomment environment-based deployments"
           echo ""
-          echo "📚 See lesson: Building a Secure Release Pipeline"
+          echo "🔧 Instructions:"
+          echo "  • Find the 👇 Uncomment sections in the workflow"
+          echo "  • Remove the # at the beginning of each line"
+          echo "  • Test one step at a time"
+          echo "  • Commit and push to see the changes"
+          echo ""
+          echo "📚 Learn: Building a Secure Release Pipeline"
