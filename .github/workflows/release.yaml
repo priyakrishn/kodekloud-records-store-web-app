@@ -10,12 +10,12 @@ on:
     branches:
       - main
 
-# Step 4: Uncomment to apply least privilege permissions
-# 👇 Uncomment this section in Step 4: Secure Authentication
-# permissions:
-#   contents: read      # Can read repository
-#   packages: write     # Can push Docker images
-#   id-token: write     # Can authenticate with cloud
+# Step 4: Apply least privilege permissions  
+# 👇 Uncommented in Step 4: Secure Authentication
+permissions:
+  contents: read      # Can read repository
+  packages: write     # Can push Docker images
+  id-token: write     # Can authenticate with cloud
 
 jobs:
   # Step 1: Basic build and test (ALWAYS ENABLED)
