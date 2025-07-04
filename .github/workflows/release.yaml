@@ -109,6 +109,9 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose version
 
+      - name: Generate .env.dev for build
+        run: ./deploy/environments/setup-local-env.sh
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
