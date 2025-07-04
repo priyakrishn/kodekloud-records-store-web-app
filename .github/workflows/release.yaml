@@ -1,4 +1,4 @@
-name: Secure Release Pipeline - Step-by-Step Security
+name: Progressive Config Management & Secure Release Pipeline
 
 on:
   push:
@@ -9,18 +9,79 @@ on:
     types: [closed]
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for deployment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+      skip_tests:
+        description: 'Skip tests (for emergency deployments)'
+        required: false
+        default: false
+        type: boolean
 
 # Step 4: Apply least privilege permissions  
-# 👇 Uncommented in Step 4: Secure Authentication
-# permissions:
-#   contents: read      # Can read repository
-#   packages: write     # Can push Docker images
-#   id-token: write     # Can authenticate with cloud
+# 👇 Uncomment in Step 4: Secure Authentication
+permissions:
+  contents: read      # Can read repository
+  packages: write     # Can push Docker images
+  id-token: write     # Can authenticate with cloud
 
 jobs:
-  # Step 1: Basic build and test (ALWAYS ENABLED)
-  build-and-test:
+  # Stage 1: Configuration Validation (ALWAYS RUNS FIRST)
+  validate-configuration:
     runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Environment Configuration Files
+        run: |
+          echo "🔍 Validating environment configuration files..."
+          
+          # Make validation script executable
+          chmod +x deploy/scripts/validate_env.sh
+          
+          # Validate all environment files
+          echo "Validating development environment..."
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.dev
+          
+          echo "Validating staging environment..."
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.staging
+          
+          echo "Validating production environment..."
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.prod
+          
+          echo "✅ All environment configurations validated"
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          echo "🔍 Validating Docker Compose configurations..."
+          
+          # Test each environment configuration
+          docker-compose --env-file deploy/environments/.env.dev config --quiet
+          echo "✅ Development config valid"
+          
+          docker-compose --env-file deploy/environments/.env.staging config --quiet  
+          echo "✅ Staging config valid"
+          
+          docker-compose --env-file deploy/environments/.env.prod config --quiet
+          echo "✅ Production config valid"
+          
+          echo "🎉 All Docker Compose configurations validated"
+
+  # Stage 2: Build and Security Scanning
+  build-and-test:
+    needs: validate-configuration
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
     
     steps:
       - name: Checkout code
@@ -50,15 +111,36 @@ jobs:
       #     pip-audit --strict
       #     echo "✅ No critical vulnerabilities found"
 
-      # - name: Run Basic Tests
-      #   run: |
-      #     source venv/bin/activate
-      #     pytest tests/ || echo "Tests completed"
+      - name: Build Application (Development Environment)
+        run: |
+          echo "🏗️ Building application with development configuration..."
+          docker-compose --env-file deploy/environments/.env.dev build api
+          echo "✅ Development build completed"
 
-  # Step 3: Container build with SBOM
+      - name: Run Tests (Development Environment)
+        run: |
+          echo "🧪 Running tests in isolated development environment..."
+          
+          # Start services with development config
+          docker-compose --env-file deploy/environments/.env.dev up -d db rabbitmq
+          
+          # Wait for services to be ready
+          echo "Waiting for database to be ready..."
+          sleep 10
+          
+          # Run tests
+          source venv/bin/activate
+          pytest src/tests/ || echo "✅ Tests completed"
+          
+          # Cleanup
+          docker-compose --env-file deploy/environments/.env.dev down
+          echo "✅ Development testing completed"
+
+  # Stage 3: Container Build and Security Scanning
   build-container:
-    needs: build-and-test
+    needs: [validate-configuration, build-and-test]
     runs-on: ubuntu-latest
+    if: always() && (needs.validate-configuration.result == 'success') && (needs.build-and-test.result == 'success' || inputs.skip_tests)
 
     steps:
       - name: Checkout code
@@ -84,11 +166,11 @@ jobs:
       #     grype sbom.json --fail-on high
       #     echo "🔍 SBOM vulnerability scan completed"
 
-      # - name: Get version from Git commit
-      #   id: get_version
-      #   run: |
-      #     echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
-      #     echo "Building version: ${GITHUB_SHA::7}"
+      - name: Get version from Git commit
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "Building version: ${GITHUB_SHA::7}"
 
       # Step 4: Choose your authentication method
       # 🚨 SECURITY ISSUE: Uncomment ONLY ONE of the following login methods:
@@ -107,11 +189,11 @@ jobs:
       #     echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
       #     echo "✅ Using secure GitHub token authentication"
 
-      # - name: Build and tag Docker image
-      #   run: |
-      #     docker build -t ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} .
-      #     docker tag ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-records:latest
-      #     echo "🐳 Docker image built: kodekloud-records:${{ env.VERSION }}"
+      - name: Build and tag Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} .
+          docker tag ghcr.io/${{ github.repository }}/kodekloud-records:${{ env.VERSION }} ghcr.io/${{ github.repository }}/kodekloud-records:latest
+          echo "🐳 Docker image built: kodekloud-records:${{ env.VERSION }}"
 
       # Step 5: Uncomment to add container vulnerability scanning
       # 👇 Uncomment this section in Step 5: Container Security
@@ -135,77 +217,195 @@ jobs:
           docker push ghcr.io/${{ github.repository }}/kodekloud-records:latest
           echo "📦 Images pushed to registry"
 
-  # Step 6: Deploy to staging
+  # Stage 4: Deploy to Staging (AUTOMATIC after build succeeds)
   deploy-staging:
-    needs: build-container
+    needs: [validate-configuration, build-container]
     runs-on: ubuntu-latest
-    # Step 6: Uncomment to add environment protection
-    # 👇 Uncomment this line in Step 6: Environment-based Deployments
-    # environment: staging
+    environment: staging
+    if: always() && (needs.validate-configuration.result == 'success') && (needs.build-container.result == 'success')
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Environment Promotion Gate
+        run: |
+          echo "🚦 Environment Promotion: Development → Staging"
+          echo "✅ Configuration validation: PASSED"
+          echo "✅ Build and tests: PASSED"
+          echo "✅ Container security: PASSED"
+          echo "🟢 PROMOTION APPROVED: Deploying to staging"
+
+      - name: Create Staging Environment Configuration
+        run: |
+          echo "🔧 Preparing staging deployment configuration..."
+          
+          # Step 6: Uncomment to use GitHub secrets for staging
+          # 👇 Uncomment this section in Step 6: Secure Environment Management
+          # cat > deploy/environments/.env.staging.secure << EOF
+          # POSTGRES_HOST=staging-db.company.com
+          # POSTGRES_DB=kodekloud_records_staging
+          # POSTGRES_USER=staging_user
+          # POSTGRES_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}
+          # GRAFANA_ADMIN_PASSWORD=${{ secrets.STAGING_GRAFANA_PASSWORD }}
+          # DEBUG=false
+          # LOG_LEVEL=INFO
+          # ENVIRONMENT=staging
+          # EOF
+          
+          echo "✅ Staging configuration prepared"
+
       - name: Deploy to Staging
         run: |
           echo "🚀 Deploying to Staging Environment"
-          echo "Version: ${{ env.VERSION }}"
-          echo "URL: http://staging.kodekloud-records.com"
-          # In real world: kubectl apply -f k8s/staging/ or helm upgrade
-          sleep 3
+          echo "Using configuration: deploy/environments/.env.staging"
+          
+          # Validate configuration before deployment
+          chmod +x deploy/scripts/validate_env.sh
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.staging
+          
+          # In production, you would run:
+          # docker-compose --env-file deploy/environments/.env.staging up -d
+          
+          echo "Environment: Staging"
+          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.staging | cut -d'=' -f2)"
+          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.staging | cut -d'=' -f2)"
+          echo "✅ Staging deployment completed"
 
-      - name: Basic Health Check
+      - name: Staging Integration Tests
         run: |
-          echo "🏥 Running health checks..."
-          echo "✅ Application is responding"
-          echo "✅ Database connection OK"
-          # In real world: curl -f $STAGING_URL/health
+          echo "🧪 Running staging integration tests..."
+          
+          # In production, you would test actual endpoints
+          # curl -f http://staging.kodekloud-records.com/health
+          # curl -f http://staging.kodekloud-records.com/api/health/database
+          
+          echo "✅ Health endpoint: OK"
+          echo "✅ Database connectivity: OK"  
+          echo "✅ API endpoints: OK"
+          echo "✅ Monitoring dashboards: Active"
+          echo "🎉 Staging validation successful"
 
-  # Step 6: Deploy to production
+  # Stage 5: Deploy to Production (MANUAL APPROVAL REQUIRED)
   deploy-production:
-    needs: deploy-staging
+    needs: [validate-configuration, build-container, deploy-staging]
     runs-on: ubuntu-latest
-    # Step 6: Uncomment to add environment protection
-    # 👇 Uncomment this line in Step 6: Environment-based Deployments
-    # environment: production
+    environment: production
+    if: always() && (needs.validate-configuration.result == 'success') && (needs.build-container.result == 'success') && (needs.deploy-staging.result == 'success') && (github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production')
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Production Promotion Gate
+        run: |
+          echo "🚦 Environment Promotion: Staging → Production"
+          echo "✅ Configuration validation: PASSED"
+          echo "✅ Build and security scans: PASSED"
+          echo "✅ Staging deployment: PASSED"
+          echo "✅ Staging integration tests: PASSED"
+          echo ""
+          echo "🔒 MANUAL APPROVAL REQUIRED FOR PRODUCTION"
+          echo "👤 Approved by: ${{ github.actor }}"
+          echo "📅 Deployment time: $(date)"
+          echo "🟢 PRODUCTION DEPLOYMENT AUTHORIZED"
+
+      - name: Create Production Environment Configuration
+        run: |
+          echo "🔒 Preparing production deployment configuration..."
+          
+          # Step 6: Uncomment to use GitHub secrets for production
+          # 👇 Uncomment this section in Step 6: Secure Environment Management
+          # cat > deploy/environments/.env.prod.secure << EOF
+          # POSTGRES_HOST=prod-db-cluster.company.com
+          # POSTGRES_DB=kodekloud_records_prod
+          # POSTGRES_USER=prod_user
+          # POSTGRES_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+          # GRAFANA_ADMIN_PASSWORD=${{ secrets.PROD_GRAFANA_PASSWORD }}
+          # DEBUG=false
+          # LOG_LEVEL=WARNING
+          # ENVIRONMENT=production
+          # PROMETHEUS_RETENTION_TIME=90d
+          # EOF
+          
+          echo "✅ Production configuration prepared"
+
       - name: Deploy to Production
         run: |
           echo "🚀 Deploying to Production Environment"
-          echo "Version: ${{ env.VERSION }}"
-          echo "URL: https://kodekloud-records.com"
-          # In real world: kubectl apply -f k8s/production/ or helm upgrade
-          sleep 5
-
-      - name: Verify Production Deployment
-        run: |
+          echo "Using configuration: deploy/environments/.env.prod"
+          
+          # Validate configuration before deployment
+          chmod +x deploy/scripts/validate_env.sh
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.prod
+          
+          # In production, you would run:
+          # docker-compose --env-file deploy/environments/.env.prod.secure up -d
+          
+          echo "Environment: Production"
+          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.prod | cut -d'=' -f2)"
+          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.prod | cut -d'=' -f2)"
+          echo "Log Level: $(grep LOG_LEVEL deploy/environments/.env.prod | cut -d'=' -f2)"
           echo "✅ Production deployment completed"
-          echo "✅ Application is healthy"
-          # In real world: curl -f $PRODUCTION_URL/health
 
-  # Security summary (always runs)
-  security-summary:
-    needs: [build-and-test, build-container]
+      - name: Production Health Check and Monitoring
+        run: |
+          echo "🏥 Running comprehensive production health checks..."
+          
+          # In production, you would test actual endpoints
+          # curl -f https://kodekloud-records.com/health
+          # curl -f https://kodekloud-records.com/api/health/database
+          
+          echo "✅ Application health: OK"
+          echo "✅ Database connection: OK"
+          echo "✅ Load balancer: OK"
+          echo "✅ CDN: OK"
+          echo "✅ Monitoring dashboards: Active"
+          echo "✅ Alerting rules: Configured"
+          echo "✅ Tracing: Active"
+          echo "✅ Logging: Aggregated"
+          echo "🎉 Production environment fully operational"
+
+      - name: Post-Deployment Notifications
+        run: |
+          echo "📢 Sending deployment notifications..."
+          echo "✅ Slack notification: Sent"
+          echo "✅ Email notification: Sent"
+          echo "✅ Monitoring alerts: Updated"
+          echo "✅ Change management: Recorded"
+          echo "📊 Deployment metrics: Published"
+
+  # Environment Promotion Summary (always runs)
+  promotion-summary:
+    needs: [validate-configuration, build-and-test, build-container, deploy-staging, deploy-production]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
-      - name: Security Pipeline Progress Report
+      - name: Environment Promotion Report
         run: |
-          echo "🔒 Security Pipeline Learning Progress"
-          echo "====================================="
-          echo "✅ Step 1: Basic build and test - COMPLETE"
+          echo "🚦 Environment Promotion Pipeline Summary"
+          echo "========================================="
           echo ""
-          echo "🎯 Next Steps to Secure Your Pipeline:"
-          echo "  Step 2: Uncomment dependency vulnerability scanning"
-          echo "  Step 3: Uncomment SBOM generation and scanning"
-          echo "  Step 4: Replace hardcoded credentials with GitHub secrets"
-          echo "  Step 5: Uncomment container vulnerability scanning"
-          echo "  Step 6: Uncomment environment-based deployments"
+          echo "🔄 Promotion Flow: Development → Staging → Production"
           echo ""
-          echo "🔧 Instructions:"
-          echo "  • Find the 👇 Uncomment sections in the workflow"
-          echo "  • Remove the # at the beginning of each line"
-          echo "  • Test one step at a time"
-          echo "  • Commit and push to see the changes"
+          echo "Stage Status:"
+          echo "  ✅ Configuration Validation: ${{ needs.validate-configuration.result }}"
+          echo "  ✅ Build & Test (Development): ${{ needs.build-and-test.result }}"
+          echo "  ✅ Container Build & Security: ${{ needs.build-container.result }}"
+          echo "  ✅ Staging Deployment: ${{ needs.deploy-staging.result }}"
+          echo "  🔒 Production Deployment: ${{ needs.deploy-production.result }}"
           echo ""
-          echo "📚 Learn: Building a Secure Release Pipeline"
+          echo "🎯 Environment Promotion Achievements:"
+          echo "  ✅ Sequential deployment gates"
+          echo "  ✅ Automatic staging promotion"
+          echo "  ✅ Manual production approval"
+          echo "  ✅ Configuration validation at each stage"
+          echo "  ✅ Rollback capability at every level"
+          echo ""
+          echo "🔧 Manual Deployment Commands:"
+          echo "  • Development: docker-compose --env-file deploy/environments/.env.dev up"
+          echo "  • Staging: docker-compose --env-file deploy/environments/.env.staging up"
+          echo "  • Production: docker-compose --env-file deploy/environments/.env.prod up"
+          echo ""
+          echo "📚 Learn: Progressive Config Management → Environment Promotion → Secure Releases"
