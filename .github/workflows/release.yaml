@@ -42,38 +42,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate Environment Configuration Files
+      - name: Validate Environment Configuration Templates
         run: |
-          echo "🔍 Validating environment configuration files..."
+          echo "🔍 Validating environment configuration templates..."
+          
+          # Generate environment files from templates for validation
+          ./deploy/environments/setup-local-env.sh
           
           # Make validation script executable
           chmod +x deploy/scripts/validate_env.sh
           
-          # Validate all environment files
+          # Validate generated environment files
           echo "Validating development environment..."
           ./deploy/scripts/validate_env.sh deploy/environments/.env.dev
           
-          echo "Validating staging environment..."
-          ./deploy/scripts/validate_env.sh deploy/environments/.env.staging
+          echo "Validating template structure..."
+          [ -f "deploy/environments/templates/env.dev.template" ] || exit 1
+          [ -f "deploy/environments/templates/env.staging.template" ] || exit 1
+          [ -f "deploy/environments/templates/env.prod.template" ] || exit 1
           
-          echo "Validating production environment..."
-          ./deploy/scripts/validate_env.sh deploy/environments/.env.prod
-          
-          echo "✅ All environment configurations validated"
+          echo "✅ All environment templates validated"
 
       - name: Validate Docker Compose Configuration
         run: |
           echo "🔍 Validating Docker Compose configurations..."
           
-          # Test each environment configuration
+          # Test development configuration (generated from template)
           docker-compose --env-file deploy/environments/.env.dev config --quiet
           echo "✅ Development config valid"
           
-          docker-compose --env-file deploy/environments/.env.staging config --quiet  
-          echo "✅ Staging config valid"
+          # For staging/production, create temporary files with placeholder values for validation
+          cp deploy/environments/templates/env.staging.template deploy/environments/.env.staging.temp
+          sed -i 's/\${[^}]*}/placeholder_value/g' deploy/environments/.env.staging.temp
+          docker-compose --env-file deploy/environments/.env.staging.temp config --quiet
+          echo "✅ Staging template structure valid"
           
-          docker-compose --env-file deploy/environments/.env.prod config --quiet
-          echo "✅ Production config valid"
+          cp deploy/environments/templates/env.prod.template deploy/environments/.env.prod.temp
+          sed -i 's/\${[^}]*}/placeholder_value/g' deploy/environments/.env.prod.temp
+          docker-compose --env-file deploy/environments/.env.prod.temp config --quiet
+          echo "✅ Production template structure valid"
+          
+          # Clean up temporary files
+          rm -f deploy/environments/.env.*.temp
           
           echo "🎉 All Docker Compose configurations validated"
 
@@ -240,37 +250,38 @@ jobs:
         run: |
           echo "🔧 Preparing staging deployment configuration..."
           
-          # Step 6: Uncomment to use GitHub secrets for staging
-          # 👇 Uncomment this section in Step 6: Secure Environment Management
-          # cat > deploy/environments/.env.staging.secure << EOF
-          # POSTGRES_HOST=staging-db.company.com
-          # POSTGRES_DB=kodekloud_records_staging
-          # POSTGRES_USER=staging_user
-          # POSTGRES_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}
-          # GRAFANA_ADMIN_PASSWORD=${{ secrets.STAGING_GRAFANA_PASSWORD }}
-          # DEBUG=false
-          # LOG_LEVEL=INFO
-          # ENVIRONMENT=staging
-          # EOF
+          # Create staging config from template with GitHub secrets
+          cp deploy/environments/templates/env.staging.template deploy/environments/.env.staging.secure
           
-          echo "✅ Staging configuration prepared"
+          # Replace placeholder variables with actual values
+          sed -i "s/\${STAGING_DB_PASSWORD}/${{ secrets.STAGING_DB_PASSWORD || 'placeholder_password' }}/g" deploy/environments/.env.staging.secure
+          sed -i "s/\${STAGING_GRAFANA_PASSWORD}/${{ secrets.STAGING_GRAFANA_PASSWORD || 'placeholder_password' }}/g" deploy/environments/.env.staging.secure
+          
+          echo "✅ Staging configuration prepared with secrets"
+          echo "📋 Configuration summary:"
+          echo "   Database: $(grep POSTGRES_DB deploy/environments/.env.staging.secure | cut -d'=' -f2)"
+          echo "   Environment: $(grep ENVIRONMENT deploy/environments/.env.staging.secure | cut -d'=' -f2)"
+          echo "   Debug Mode: $(grep DEBUG deploy/environments/.env.staging.secure | cut -d'=' -f2)"
 
       - name: Deploy to Staging
         run: |
           echo "🚀 Deploying to Staging Environment"
-          echo "Using configuration: deploy/environments/.env.staging"
+          echo "Using configuration: deploy/environments/.env.staging.secure"
           
           # Validate configuration before deployment
           chmod +x deploy/scripts/validate_env.sh
-          ./deploy/scripts/validate_env.sh deploy/environments/.env.staging
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.staging.secure
           
           # In production, you would run:
-          # docker-compose --env-file deploy/environments/.env.staging up -d
+          # docker-compose --env-file deploy/environments/.env.staging.secure up -d
           
           echo "Environment: Staging"
-          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.staging | cut -d'=' -f2)"
-          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.staging | cut -d'=' -f2)"
+          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.staging.secure | cut -d'=' -f2)"
+          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.staging.secure | cut -d'=' -f2)"
           echo "✅ Staging deployment completed"
+          
+          # Clean up secure file after deployment
+          rm -f deploy/environments/.env.staging.secure
 
       - name: Staging Integration Tests
         run: |
@@ -314,39 +325,47 @@ jobs:
         run: |
           echo "🔒 Preparing production deployment configuration..."
           
-          # Step 6: Uncomment to use GitHub secrets for production
-          # 👇 Uncomment this section in Step 6: Secure Environment Management
-          # cat > deploy/environments/.env.prod.secure << EOF
-          # POSTGRES_HOST=prod-db-cluster.company.com
-          # POSTGRES_DB=kodekloud_records_prod
-          # POSTGRES_USER=prod_user
-          # POSTGRES_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
-          # GRAFANA_ADMIN_PASSWORD=${{ secrets.PROD_GRAFANA_PASSWORD }}
-          # DEBUG=false
-          # LOG_LEVEL=WARNING
-          # ENVIRONMENT=production
-          # PROMETHEUS_RETENTION_TIME=90d
-          # EOF
+          # Create production config from template with GitHub secrets
+          cp deploy/environments/templates/env.prod.template deploy/environments/.env.prod.secure
           
-          echo "✅ Production configuration prepared"
+          # Replace placeholder variables with actual values from GitHub secrets
+          sed -i "s/\${PROD_DB_PASSWORD}/${{ secrets.PROD_DB_PASSWORD || 'MISSING_SECRET' }}/g" deploy/environments/.env.prod.secure
+          sed -i "s/\${PROD_GRAFANA_PASSWORD}/${{ secrets.PROD_GRAFANA_PASSWORD || 'MISSING_SECRET' }}/g" deploy/environments/.env.prod.secure
+          
+          # Verify no placeholder values remain for production
+          if grep -q "MISSING_SECRET" deploy/environments/.env.prod.secure; then
+            echo "❌ Missing required production secrets!"
+            echo "Please configure PROD_DB_PASSWORD and PROD_GRAFANA_PASSWORD in GitHub Secrets"
+            exit 1
+          fi
+          
+          echo "✅ Production configuration prepared with secrets"
+          echo "📋 Configuration summary:"
+          echo "   Database: $(grep POSTGRES_DB deploy/environments/.env.prod.secure | cut -d'=' -f2)"
+          echo "   Environment: $(grep ENVIRONMENT deploy/environments/.env.prod.secure | cut -d'=' -f2)"
+          echo "   Debug Mode: $(grep DEBUG deploy/environments/.env.prod.secure | cut -d'=' -f2)"
+          echo "   Log Level: $(grep LOG_LEVEL deploy/environments/.env.prod.secure | cut -d'=' -f2)"
 
       - name: Deploy to Production
         run: |
           echo "🚀 Deploying to Production Environment"
-          echo "Using configuration: deploy/environments/.env.prod"
+          echo "Using configuration: deploy/environments/.env.prod.secure"
           
           # Validate configuration before deployment
           chmod +x deploy/scripts/validate_env.sh
-          ./deploy/scripts/validate_env.sh deploy/environments/.env.prod
+          ./deploy/scripts/validate_env.sh deploy/environments/.env.prod.secure
           
           # In production, you would run:
           # docker-compose --env-file deploy/environments/.env.prod.secure up -d
           
           echo "Environment: Production"
-          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.prod | cut -d'=' -f2)"
-          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.prod | cut -d'=' -f2)"
-          echo "Log Level: $(grep LOG_LEVEL deploy/environments/.env.prod | cut -d'=' -f2)"
+          echo "Database: $(grep POSTGRES_DB deploy/environments/.env.prod.secure | cut -d'=' -f2)"
+          echo "Debug Mode: $(grep DEBUG deploy/environments/.env.prod.secure | cut -d'=' -f2)"
+          echo "Log Level: $(grep LOG_LEVEL deploy/environments/.env.prod.secure | cut -d'=' -f2)"
           echo "✅ Production deployment completed"
+          
+          # Clean up secure file after deployment
+          rm -f deploy/environments/.env.prod.secure
 
       - name: Production Health Check and Monitoring
         run: |
@@ -404,8 +423,14 @@ jobs:
           echo "  ✅ Rollback capability at every level"
           echo ""
           echo "🔧 Manual Deployment Commands:"
-          echo "  • Development: docker-compose --env-file deploy/environments/.env.dev up"
-          echo "  • Staging: docker-compose --env-file deploy/environments/.env.staging up"
-          echo "  • Production: docker-compose --env-file deploy/environments/.env.prod up"
+          echo "  • Development: ./deploy/environments/setup-local-env.sh && docker-compose --env-file deploy/environments/.env.dev up"
+          echo "  • Staging: Use GitHub Actions with STAGING_* secrets configured"
+          echo "  • Production: Use GitHub Actions with PROD_* secrets configured"
           echo ""
-          echo "📚 Learn: Progressive Config Management → Environment Promotion → Secure Releases"
+          echo "🔐 Security Features:"
+          echo "  ✅ Template-based configuration (safe to commit)"
+          echo "  ✅ GitHub Secrets integration for sensitive data"
+          echo "  ✅ Automatic cleanup of temporary secure files"
+          echo "  ✅ Validation of secret availability before deployment"
+          echo ""
+          echo "📚 Learn: Secure Config Templates → GitHub Secrets → Zero-Trust Deployments"
