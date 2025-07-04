@@ -124,7 +124,7 @@ jobs:
           pip install -r src/requirements.txt
 
       # Step 2: Uncomment to add dependency vulnerability scanning
-      👇 Uncomment this section in Step 2: Dependency Scanning
+      #👇 Uncomment this section in Step 2: Dependency Scanning
       - name: Install Security Tools
         run: |
           source venv/bin/activate
