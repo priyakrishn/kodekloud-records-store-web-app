@@ -11,19 +11,22 @@ services:
       - jaeger
       - fluent-bit
     ports:
-      - "8000:8000"
+      - "${WEB_PORT:-8000}:8000"
     environment:
-      POSTGRES_HOST: db
-      POSTGRES_DB: kodekloud_records
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      RABBITMQ_HOST: rabbitmq
-      PYTHONPATH: /app/src
-      OTEL_SERVICE_NAME: kodekloud-record-store-api
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
-      OTEL_TRACES_SAMPLER: "parentbased_always_on"
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      PYTHONPATH: ${PYTHONPATH}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
+      OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER}
       OTEL_PROPAGATORS: "tracecontext,baggage"
+      DEBUG: ${DEBUG}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ENVIRONMENT: ${ENVIRONMENT}
     logging:
       driver: "fluentd"
       options:
@@ -46,14 +49,17 @@ services:
       - pushgateway
       - jaeger
     environment:
-      POSTGRES_HOST: db
-      POSTGRES_DB: kodekloud_records
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      RABBITMQ_HOST: rabbitmq
-      PROMETHEUS_PUSHGATEWAY: pushgateway:9091
-      PYTHONPATH: /app/src
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      PROMETHEUS_PUSHGATEWAY: ${PROMETHEUS_PUSHGATEWAY}
+      PYTHONPATH: ${PYTHONPATH}
       OTEL_SERVICE_NAME: kodekloud-record-store-worker
+      DEBUG: ${DEBUG}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ENVIRONMENT: ${ENVIRONMENT}
     networks:
       - kodekloud-record-store-net
 
@@ -62,9 +68,9 @@ services:
     container_name: kodekloud-record-store-db
     restart: always
     environment:
-      POSTGRES_DB: kodekloud_records
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -100,6 +106,7 @@ services:
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-15d}'
     networks:
       - kodekloud-record-store-net
 
@@ -119,7 +126,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana

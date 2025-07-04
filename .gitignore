@@ -1,0 +1,3 @@
+/deploy/environments/.env.prod
+/deploy/environments/.env.staging
+/deploy/environments/.env.dev
