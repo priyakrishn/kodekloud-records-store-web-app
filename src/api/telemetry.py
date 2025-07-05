@@ -10,7 +10,7 @@ import os
 import socket
 import time
 import sys
-from prometheus_client import Histogram
+from prometheus_client import Histogram, Counter
 
 # Define the ORDER_PROCESSING_TIME Histogram metric
 ORDER_PROCESSING_TIME = Histogram(
@@ -26,6 +26,40 @@ SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "kodekloud-record-store-service")
 
 # Global flag to track if telemetry has been set up
 _telemetry_initialized = False
+
+# Example SLI metrics (students should add their own in the capstone)
+# These demonstrate the structure for user-centric measurements
+
+# Traffic: Request counting by endpoint and status
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status_code']
+)
+
+# Latency: Request duration tracking  
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint']
+)
+
+# Errors: Error rate tracking
+http_errors_total = Counter(
+    'http_errors_total', 
+    'Total HTTP errors',
+    ['endpoint', 'error_type']
+)
+
+# Business Logic SLI Examples (extend these for capstone)
+user_actions_total = Counter(
+    'user_actions_total',
+    'Total user actions',
+    ['action_type', 'status']
+)
+
+# CAPSTONE TODO: Students should add their own SLI metrics here
+# Examples: login_attempts_total, search_requests_duration, checkout_success_rate, etc.
 
 def setup_telemetry(service_name=None):
     """Initialize OpenTelemetry with the given service name"""
