@@ -124,7 +124,7 @@
       "gridPos": {
         "h": 5,
         "w": 8,
-        "x": 0,
+        "x": 16,
         "y": 3
       },
       "id": 54,
@@ -151,6 +151,70 @@
         }
       ],
       "title": "AVAILABILITY (Target: 99.9%)",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Container CPU usage - Infrastructure metric for system monitoring",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 3
+      },
+      "id": 999,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.7",
+      "targets": [
+        {
+          "expr": "avg(rate(container_cpu_usage_seconds_total{name=~\".*kodekloud.*\"}[5m])) * 100",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Container CPU Usage (%)",
       "type": "gauge"
     },
     {
@@ -192,7 +256,7 @@
       "gridPos": {
         "h": 5,
         "w": 8,
-        "x": 8,
+        "x": 16,
         "y": 3
       },
       "id": 56,
