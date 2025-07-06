@@ -108,16 +108,16 @@ groups:
       dashboard: "https://grafana.kodekloud-records.com/d/checkout"
 
   # CAPSTONE: SLO for [your chosen SLI] >= [your target]%
-  - alert: [YourSLI]SLOViolation
-    expr: |
-      # Calculate your SLI success rate over 30 days
-      # Example formula: successful_requests / total_requests < your_target
-      ([your_success_metric] / ([your_success_metric] + [your_failure_metric])) < 0.999
-    for: 15m
-    labels:
-      severity: critical
-      team: platform
-    annotations:
-      summary: '[Your SLI] SLO violation'
-      description: '[Your SLI] has dropped below [target]% over the evaluation period.'
-      playbook: 'https://wiki.kodekloud-records.com/playbooks/[your-sli]'
+  # - alert: [YourSLI]SLOViolation
+  #   expr: |
+  #     # Calculate your SLI success rate over 30 days
+  #     # Example formula: successful_requests / total_requests < your_target
+  #     ([your_success_metric] / ([your_success_metric] + [your_failure_metric])) < 0.999
+  #   for: 15m
+  #   labels:
+  #     severity: critical
+  #     team: platform
+  #   annotations:
+  #     summary: '[Your SLI] SLO violation'
+  #     description: '[Your SLI] has dropped below [target]% over the evaluation period.'
+  #     playbook: 'https://wiki.kodekloud-records.com/playbooks/[your-sli]'
