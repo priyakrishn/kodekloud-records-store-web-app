@@ -153,7 +153,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(http_requests_total{status_code=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+          "expr": "rate(kodekloud_http_requests_total{status_code=~\"5..\"}[5m]) / rate(kodekloud_http_requests_total[5m])",
           "interval": "",
           "legendFormat": "Error Rate",
           "refId": "A"
@@ -220,7 +220,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m]))",
           "interval": "",
           "legendFormat": "RPS",
           "refId": "A"
@@ -290,7 +290,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m])) by (route)",
           "interval": "",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
@@ -350,7 +350,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) by (status_code)",
+          "expr": "sum(rate(kodekloud_http_requests_total{status_code=~\"5..\"}[5m])) by (status_code)",
           "interval": "",
           "legendFormat": "{{status_code}} errors",
           "refId": "A"
@@ -411,14 +411,14 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket[5m]))",
           "interval": "",
           "legendFormat": "95th percentile",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, rate(kodekloud_http_request_duration_seconds_bucket[5m]))",
           "interval": "",
           "legendFormat": "50th percentile",
           "refId": "B"

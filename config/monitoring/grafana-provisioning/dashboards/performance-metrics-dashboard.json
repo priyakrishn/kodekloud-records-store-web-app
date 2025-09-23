@@ -90,7 +90,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket[5m])) * 1000",
           "interval": "",
           "legendFormat": "P95 Response Time",
           "refId": "A"
@@ -157,7 +157,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m]))",
           "interval": "",
           "legendFormat": "Throughput",
           "refId": "A"
@@ -224,7 +224,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(http_requests_total{status_code=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+          "expr": "rate(kodekloud_http_requests_total{status_code=~\"5..\"}[5m]) / rate(kodekloud_http_requests_total[5m])",
           "interval": "",
           "legendFormat": "Error Rate",
           "refId": "A"
@@ -416,21 +416,21 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.50, rate(kodekloud_http_request_duration_seconds_bucket[5m])) * 1000",
           "interval": "",
           "legendFormat": "Average (P50)",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket[5m])) * 1000",
           "interval": "",
           "legendFormat": "P95 (95th percentile)",
           "refId": "B"
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.99, rate(kodekloud_http_request_duration_seconds_bucket[5m])) * 1000",
           "interval": "",
           "legendFormat": "P99 (99th percentile)",
           "refId": "C"
@@ -575,7 +575,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{endpoint=~\".*products.*|.*checkout.*|.*orders.*\"}[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket{endpoint=~\".*products.*|.*checkout.*|.*orders.*\"}[5m])) * 1000",
           "interval": "",
           "legendFormat": "Database Query Time (estimated)",
           "refId": "A"
@@ -632,14 +632,14 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m]))",
           "interval": "",
           "legendFormat": "Incoming Requests",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m])) - sum(rate(http_requests_total{status_code=~\"5..\"}[5m]))",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m])) - sum(rate(kodekloud_http_requests_total{status_code=~\"5..\"}[5m]))",
           "interval": "",
           "legendFormat": "Successfully Processed",
           "refId": "B"

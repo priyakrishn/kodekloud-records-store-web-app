@@ -79,7 +79,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m])) by (route)",
           "interval": "",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
@@ -139,7 +139,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_request_errors_total[5m])) by (endpoint)",
+          "expr": "sum(rate(http_request_errors_total[5m])) by (route)",
           "interval": "",
           "legendFormat": "{{endpoint}} errors",
           "refId": "A"

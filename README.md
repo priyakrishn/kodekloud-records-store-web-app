@@ -1,298 +1,402 @@
 # KodeKloud Records Store
 
-A comprehensive demo application for learning and practicing SRE, observability, and incident management concepts. This project simulates a record store e-commerce application with integrated observability tools for metrics, logs, and distributed tracing.
+A comprehensive demo application for learning and practicing **SRE**, **observability**, and **incident management** concepts. This project simulates a record store e-commerce application with integrated observability tools for metrics, logs, and distributed tracing.
 
-## Overview
+## 🎯 Overview
 
 The KodeKloud Records Store application demonstrates a complete observability solution built on modern best practices. It serves as a hands-on learning environment for:
 
 - Setting up comprehensive monitoring and observability
-- Implementing distributed tracing for microservices
-- Designing effective alerting strategies
+- Implementing distributed tracing in applications
+- Designing effective alerting strategies  
 - Practicing incident response using real-world scenarios
 - Learning SLO-based monitoring approaches
+- Understanding Prometheus metrics best practices
 
-## Architecture
+## 🏗️ Architecture
 
-The application uses a microservice architecture with the following components:
+This is a **multi-component monolith** application with the following components:
 
-- **Web API**: Python FastAPI service for the main application
-- **Background Worker**: Celery worker for asynchronous tasks
-- **Database**: PostgreSQL for data storage
-- **Message Queue**: RabbitMQ for task distribution
-- **Observability Stack**:
-  - Prometheus for metrics collection
-  - Grafana for visualization
-  - Loki for log aggregation
-  - Jaeger for distributed tracing
-  - AlertManager for alert handling
-  - Blackbox Exporter for synthetic monitoring
-  - Fluent Bit for log collection
+### Application Components
+- **FastAPI Web Service** - Main application serving REST API endpoints
+- **Celery Background Worker** - Asynchronous task processing (same codebase)
+- **PostgreSQL Database** - Data persistence
+- **RabbitMQ** - Message queue for background task distribution
 
-### Microservices Architecture Diagram
+### Observability Stack
+- **Prometheus** - Metrics collection and storage
+- **Grafana** - Visualization and dashboards  
+- **Jaeger** - Distributed tracing
+- **Loki** - Log aggregation
+- **Fluent Bit** - Log collection and forwarding
+- **AlertManager** - Alert handling and notifications
+- **Blackbox Exporter** - Synthetic monitoring
+- **Pushgateway** - Metrics from batch jobs
+
+### Simple Architecture Diagram
 
 ```mermaid
-graph TD
-    subgraph "User Interface"
-        API[Web API<br>FastAPI<br>Port: 8000]
+graph TB
+    subgraph "KodeKloud Records Store Application"
+        Client[👤 Client] --> API[FastAPI Web Service<br/>Port: 8000]
+        API --> DB[(PostgreSQL<br/>Port: 5432)]
+        API --> MQ[RabbitMQ<br/>Port: 5672]
+        MQ --> Worker[Celery Worker<br/>Background Tasks]
+        Worker --> DB
     end
-
-    subgraph "Core Microservices"
-        PS[Product Service]
-        OS[Order Service]
-        US[User Service]
-        IS[Inventory Service]
-        NS[Notification Service]
+    
+    subgraph "Observability Stack"
+        API --> Prometheus[📊 Prometheus<br/>Port: 9090]
+        API --> Jaeger[🔍 Jaeger<br/>Port: 16686] 
+        API --> Fluent[📝 Fluent Bit]
+        Worker --> Prometheus
+        Worker --> Jaeger
+        Worker --> Fluent
+        
+        Fluent --> Loki[📚 Loki<br/>Port: 3100]
+        Prometheus --> Grafana[📈 Grafana<br/>Port: 3000]
+        Prometheus --> AlertManager[🚨 AlertManager<br/>Port: 9093]
+        Loki --> Grafana
+        Jaeger --> Grafana
+        
+        Blackbox[🎯 Blackbox Exporter<br/>Port: 9115] -.-> API
+        Pushgateway[📤 Pushgateway<br/>Port: 9091] --> Prometheus
     end
-
-    subgraph "Async Processing"
-        MQ[RabbitMQ<br>Port: 5672]
-        CW[Celery Workers]
-    end
-
-    subgraph "Storage"
-        DB[PostgreSQL<br>Port: 5432]
-    end
-
-    subgraph "Observability"
-        PR[Prometheus<br>Port: 9090]
-        GF[Grafana<br>Port: 3000]
-        JG[Jaeger<br>Port: 16686]
-        LK[Loki<br>Port: 3100]
-        AM[AlertManager<br>Port: 9093]
-        BB[Blackbox Exporter<br>Port: 9115]
-        FB[Fluent Bit]
-    end
-
-    %% Core service connections
-    API --> PS
-    API --> OS
-    API --> US
-    API --> IS
-    API --> NS
-
-    %% Service to database connections
-    PS --> DB
-    OS --> DB
-    US --> DB
-    IS --> DB
-    NS --> DB
-
-    %% Async processing connections
-    API --> MQ
-    OS --> MQ
-    IS --> MQ
-    NS --> MQ
-    MQ --> CW
-    CW --> DB
-    CW --> NS
-
-    %% Observability connections
-    PR --> API
-    PR --> PS
-    PR --> OS
-    PR --> US
-    PR --> IS
-    PR --> NS
-    PR --> MQ
-    PR --> CW
-    PR --> DB
-    PR --> BB
     
-    FB --> API
-    FB --> PS
-    FB --> OS
-    FB --> US
-    FB --> IS
-    FB --> NS
-    FB --> CW
-    FB --> LK
+    classDef app fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef obs fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef storage fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
     
-    API --> JG
-    PS --> JG
-    OS --> JG
-    US --> JG
-    IS --> JG
-    NS --> JG
-    
-    GF --> PR
-    GF --> LK
-    GF --> JG
-    PR --> AM
-
-    %% External connections
-    BB -.-> API
-    
-    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef storage fill:#bfb,stroke:#333,stroke-width:1px;
-    classDef messaging fill:#fbb,stroke:#333,stroke-width:1px;
-    classDef observability fill:#ffd,stroke:#333,stroke-width:1px;
-    
-    class API primary;
-    class PS,OS,US,IS,NS secondary;
-    class DB storage;
-    class MQ,CW messaging;
-    class PR,GF,JG,LK,AM,BB,FB observability;
+    class Client,API,Worker app
+    class Prometheus,Grafana,Jaeger,Loki,Fluent,AlertManager,Blackbox,Pushgateway obs
+    class DB,MQ storage
 ```
 
-### Data Flow Diagram
+### Request Flow
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant A as Web API
-    participant PS as Product Service
-    participant OS as Order Service
-    participant IS as Inventory Service
-    participant NS as Notification Service
-    participant MQ as RabbitMQ
-    participant CW as Celery Workers
-    participant DB as Database
+    participant A as FastAPI App
+    participant D as Database
+    participant M as RabbitMQ
+    participant W as Celery Worker
     
-    C->>A: Browse Product Catalog
-    A->>PS: Get Products
-    PS->>DB: Query Products
-    DB-->>PS: Product Data
-    PS-->>A: Product List
-    A-->>C: Display Products
+    Note over A,W: All requests traced with Jaeger & logged to Loki
     
-    C->>A: Place Order
-    A->>OS: Create Order
-    OS->>DB: Save Order
-    DB-->>OS: Order ID
-    OS->>MQ: Queue Inventory Update
-    MQ->>CW: Process Inventory Task
-    CW->>IS: Update Inventory
-    IS->>DB: Update Stock
-    CW->>MQ: Queue Notification
-    MQ->>CW: Process Notification Task
-    CW->>NS: Send Notification
-    NS-->>C: Email Confirmation
+    C->>A: GET /products
+    A->>D: Query products
+    D-->>A: Product list
+    A-->>C: JSON response
     
-    Note over A,DB: All operations are traced with Jaeger
-    Note over A,NS: All components emit metrics to Prometheus
-    Note over A,NS: All logs go to Loki via Fluent Bit
+    C->>A: POST /checkout
+    A->>D: Create order
+    A->>M: Queue background task
+    A-->>C: Order confirmation
+    
+    M->>W: Process order task
+    W->>D: Update inventory
+    W->>D: Process payment
+    W-->>M: Task complete
+    
+    Note over A,W: Metrics exported to Prometheus
 ```
 
-## Project Structure
+## 📂 Project Structure
 
 ```
-.
+kodekloud-records-store-web-app/
+├── src/
+│   ├── api/
+│   │   ├── main.py              # FastAPI application entry point
+│   │   ├── routes.py            # API endpoints (products, orders, checkout)
+│   │   ├── models.py            # Database models (Product, Order)
+│   │   ├── database.py          # Database connection and session management
+│   │   ├── worker.py            # Celery background tasks
+│   │   ├── telemetry.py         # OpenTelemetry setup
+│   │   └── metrics.py           # Prometheus metrics definitions (BEST PRACTICES)
+│   └── requirements.txt         # Python dependencies
+├── config/
+│   └── monitoring/              # Observability configuration
+│       ├── prometheus.yml       # Prometheus scrape config
+│       ├── alertmanager.yml     # Alert routing rules
+│       ├── alert_rules.yml      # Prometheus alerting rules
+│       ├── sli_rules.yml        # SLI measurement rules
+│       └── grafana-provisioning/ # Grafana dashboards & datasources
+├── deploy/
+│   └── environments/            # Environment configuration
+│       ├── setup-local-env.sh   # 🔧 Environment setup script
+│       └── templates/           # Environment variable templates
+│           ├── env.dev.template
+│           ├── env.staging.template
+│           └── env.prod.template
+├── scripts/
+│   ├── generate_logs.sh         # Generate test log data
+│   └── demo_request_correlation.sh # Demo request tracing
+├── docker-compose.yaml          # 🐳 Complete stack definition
+├── Dockerfile                   # Application container image
+├── test_traffic.sh              # 🚀 Generate test traffic
+└── black_box_monitor.sh         # 📊 Synthetic monitoring
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Git
+- **Docker Desktop** (recommended) or Docker + Docker Compose
+- **Git**
+- **curl** (for testing)
 
-### Installation and Setup
+### 📝 Step-by-Step Setup Instructions
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/kodekloud/records-store-web-app.git
-   cd kodekloud-records-store-web-app
-   ```
+#### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd kodekloud-records-store-web-app
+```
 
-2. Start the application and monitoring stack:
-   ```bash
-   docker-compose up -d
-   ```
+#### 2. Set Up Environment Variables
+```bash
+# Run the environment setup script (creates .env.dev with safe defaults)
+./deploy/environments/setup-local-env.sh
 
-3. Generate test data for observability:
-   ```bash
-   ./scripts/generate_logs.sh
-   ```
+# Verify the environment file was created
+cat .env.dev
+```
 
-4. Access the services:
-   - **Application**: http://localhost:8000
-   - **API Documentation**: http://localhost:8000/docs
-   - **Grafana**: http://localhost:3000 (user: admin, password: admin)
-   - **Prometheus**: http://localhost:9090
-   - **Jaeger UI**: http://localhost:16686
-   - **Loki**: http://localhost:3100
-   - **Alert Manager**: http://localhost:9093
-   - **RabbitMQ Management**: http://localhost:15672 (user: guest, password: guest)
+The setup script creates a `.env.dev` file with these defaults:
+- Database: `dev_user` / `dev_password_123` 
+- Grafana: `admin` / `dev_admin_123`
+- Service name: `kodekloud-record-store-api-dev`
 
-## Working with the Application
+#### 3. Start the Complete Stack
+```bash
+# Start all services (application + observability)
+docker-compose --env-file .env.dev up -d
 
-### Testing and Exploring
+# Check all services are running
+docker-compose ps
+```
 
-1. The application provides several test endpoints to generate telemetry data:
-   - `/health` - Health check endpoint
-   - `/trace-test` - Generate a trace with multiple spans
-   - `/error-test` - Generate error logs
-   - `/slow-operation` - Generate a slow operation trace
+#### 4. Verify Everything is Working
+```bash
+# Test the API
+curl http://localhost:8000/
 
-2. Generate continuous test traffic:
-   ```bash
-   ./test_traffic.sh
-   ```
+# Check metrics endpoint
+curl http://localhost:8000/metrics
 
-3. Run simplified black-box monitoring (sends periodic health checks):
-   ```bash
-   ./black_box_monitor.sh
-   ```
+# Check health
+curl http://localhost:8000/health
+```
 
-### Key Features
+### 🔗 Access the Services
 
-1. **Metrics Collection**:
-   - Application metrics (request counts, latency, errors)
-   - Service health metrics
-   - Business metrics (orders, products)
-   - SLO-based metrics for reliability measurement
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **Records Store API** | http://localhost:8000 | N/A |
+| **API Documentation** | http://localhost:8000/docs | N/A |
+| **Grafana Dashboards** | http://localhost:3000 | admin / dev_admin_123 |
+| **Prometheus** | http://localhost:9090 | N/A |
+| **Jaeger Tracing** | http://localhost:16686 | N/A |
+| **Loki Logs** | http://localhost:3100 | N/A |
+| **AlertManager** | http://localhost:9093 | N/A |
+| **RabbitMQ Management** | http://localhost:15672 | guest / guest |
 
-2. **Log Management**:
-   - Structured logging with trace context
-   - Log correlation with metrics and traces
-   - Log querying with LogQL in Grafana
+## 🧪 Testing and Exploration
 
-3. **Distributed Tracing**:
-   - Request flow visualization
-   - Performance bottleneck identification
-   - Error propagation analysis
+### Generate Test Data
 
-4. **Alerting**:
-   - SLO-based alerts
-   - Symptom-based alerting
-   - Multiple severity levels
+```bash
+# Generate test traffic (products, orders, errors)
+./test_traffic.sh
 
-## Observability Exercises
+# Generate logs for correlation testing  
+./scripts/generate_logs.sh
 
-The application is designed for hands-on learning with the following exercises:
+# Run synthetic monitoring
+./black_box_monitor.sh
+```
 
-1. **Understanding Metrics, Logs, and Traces**:
-   - View correlated telemetry data
-   - Follow a request through the system
+### API Endpoints to Test
 
-2. **Monitoring and Alerting**:
-   - Explore the pre-configured dashboards
-   - Understand alerting rules and thresholds
-   - Create custom alerts
+```bash
+# Basic endpoints
+curl http://localhost:8000/                    # Root
+curl http://localhost:8000/health              # Health check
+curl http://localhost:8000/metrics             # Prometheus metrics
 
-3. **SLO Implementation**:
-   - Learn how SLIs are defined and measured
-   - Understand error budget consumption
-   - Practice SLO-based alerting
+# Observability testing endpoints  
+curl http://localhost:8000/trace-test          # Generate test traces
+curl http://localhost:8000/error-test          # Generate test errors
 
-4. **Incident Response**:
-   - Practice troubleshooting using telemetry data
-   - Analyze performance issues
-   - Debug error conditions
+# Business endpoints
+curl http://localhost:8000/products            # List products
+curl -X POST http://localhost:8000/products \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Abbey Road", "price": 25.99}'  # Create product
 
-## Troubleshooting
+curl http://localhost:8000/orders              # List orders
+curl -X POST http://localhost:8000/orders \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 2}'        # Create order
 
-- **Services not starting**: Check for port conflicts with `docker-compose ps` and `netstat -tulpn`
-- **No data in Grafana**: Verify Prometheus is scraping targets at http://localhost:9090/targets
-- **No logs in Loki**: Check Fluent Bit is running with `docker-compose logs fluent-bit`
-- **No traces in Jaeger**: Verify OpenTelemetry export with `docker-compose logs jaeger`
+curl -X POST http://localhost:8000/checkout \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 1}'        # Checkout (triggers background tasks)
+```
 
-## Contributing
+## 📊 Key Learning Features
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+### 1. **Best Practice Prometheus Metrics**
+- **Four Golden Signals** organization (Traffic, Latency, Errors, Saturation)
+- **Proper naming conventions** with `kodekloud_` prefix
+- **Low cardinality design** to avoid metric explosion
+- **Standard histogram buckets** for latency measurements
+- **Business metrics** for SLO tracking
 
-## License
+### 2. **Distributed Tracing**
+- **End-to-end request tracking** through FastAPI → Database → Background Worker
+- **Trace correlation** with logs and metrics
+- **Performance bottleneck identification**
+- **Error propagation analysis**
 
-This project is licensed under the MIT License.
+### 3. **Structured Logging**
+- **JSON formatted logs** with trace context
+- **Log correlation** across services
+- **Centralized collection** with Fluent Bit → Loki
+
+### 4. **SLO-Based Monitoring**
+- **Service Level Indicators (SLIs)** for reliability measurement  
+- **Service Level Objectives (SLOs)** with error budgets
+- **Alerting based on SLO violations** not just symptoms
+
+## 🎓 Student Exercises
+
+### Exercise 1: Explore the Observability Stack
+1. Generate some test traffic: `./test_traffic.sh`
+2. Open Grafana (http://localhost:3000) and explore the dashboards
+3. Open Jaeger (http://localhost:16686) and trace a request end-to-end
+4. Check Prometheus (http://localhost:9090) and query some metrics
+
+### Exercise 2: Understand Metric Correlation
+1. Make a few API calls that will trigger errors
+2. Find the same request in metrics (Prometheus), logs (Loki), and traces (Jaeger)
+3. Use trace IDs to correlate between the three data sources
+
+### Exercise 3: Create Custom Metrics
+1. Look at `src/api/metrics.py` to understand best practices
+2. Add a new business metric (e.g., `kodekloud_products_viewed_total`)
+3. Update `src/api/routes.py` to increment your metric
+4. Rebuild and test: see your metric in http://localhost:8000/metrics
+
+### Exercise 4: Practice Incident Response
+1. Intentionally break something (modify code to cause errors)
+2. Use the observability tools to identify and diagnose the issue
+3. Practice following traces to find root causes
+
+## 🛠️ Environment Management
+
+### Development Environment Variables
+
+The `setup-local-env.sh` script creates these variables:
+
+```bash
+# Database Configuration
+POSTGRES_HOST=db
+POSTGRES_DB=kodekloud_records_dev
+POSTGRES_USER=dev_user
+POSTGRES_PASSWORD=dev_password_123
+
+# Application Settings
+DEBUG=true
+LOG_LEVEL=DEBUG
+ENVIRONMENT=development
+
+# OpenTelemetry
+OTEL_SERVICE_NAME=kodekloud-record-store-api-dev
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+
+# Grafana
+GRAFANA_ADMIN_PASSWORD=dev_admin_123
+```
+
+### Other Environments
+
+- **Staging**: Use `env.staging.template` 
+- **Production**: Use `env.prod.template`
+
+Copy and modify templates as needed:
+```bash
+cp deploy/environments/templates/env.staging.template .env.staging
+# Edit .env.staging with your values
+docker-compose --env-file .env.staging up -d
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**Services not starting:**
+```bash
+# Check for port conflicts
+docker-compose ps
+netstat -tulpn | grep -E ':(3000|8000|9090|5432)'
+
+# Check Docker resources
+docker system df
+docker system prune  # Clean up if needed
+```
+
+**No metrics in Grafana:**
+```bash
+# Verify Prometheus targets
+curl http://localhost:9090/api/v1/targets
+
+# Check API metrics endpoint
+curl http://localhost:8000/metrics | grep kodekloud_
+```
+
+**No logs in Loki:**
+```bash
+# Check Fluent Bit is running
+docker-compose logs fluent-bit
+
+# Test log endpoint
+curl http://localhost:3100/ready
+```
+
+**No traces in Jaeger:**
+```bash
+# Check OpenTelemetry export
+docker-compose logs jaeger
+
+# Generate test traces
+curl http://localhost:8000/trace-test
+```
+
+### Getting Help
+
+1. **Check service logs**: `docker-compose logs <service-name>`
+2. **Verify environment**: `cat .env.dev`  
+3. **Test connectivity**: Use the curl commands above
+4. **Reset everything**: `docker-compose down -v && docker-compose --env-file .env.dev up -d`
+
+## 🤝 Contributing
+
+This project is designed for learning! Feel free to:
+- Add new metrics following the patterns in `src/api/metrics.py`
+- Create additional API endpoints in `src/api/routes.py`
+- Improve dashboards in `config/monitoring/grafana-provisioning/`
+- Add new alerting rules in `config/monitoring/alert_rules.yml`
+
+## 📚 Additional Resources
+
+- [Prometheus Best Practices](https://prometheus.io/docs/practices/)
+- [OpenTelemetry Python Guide](https://opentelemetry.io/docs/languages/python/)
+- [SLO Concepts](https://sre.google/workbook/implementing-slos/)
+- [Grafana Dashboard Examples](https://grafana.com/grafana/dashboards/)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

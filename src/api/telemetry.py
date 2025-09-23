@@ -10,15 +10,6 @@ import os
 import socket
 import time
 import sys
-from prometheus_client import Histogram, Counter
-
-# Define the ORDER_PROCESSING_TIME Histogram metric
-ORDER_PROCESSING_TIME = Histogram(
-    'order_processing_time_seconds',
-    'Time taken for an order to be fully processed',
-    buckets=[1.0, 2.0, 3.0, 5.0, 10.0, 30.0]
-)
-
 logger = logging.getLogger(__name__)
 
 # Use an environment variable to determine the service name
@@ -27,36 +18,37 @@ SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "kodekloud-record-store-service")
 # Global flag to track if telemetry has been set up
 _telemetry_initialized = False
 
-# Example SLI metrics (students should add their own in the capstone)
-# These demonstrate the structure for user-centric measurements
-
-# Traffic: Request counting by endpoint and status
-http_requests_total = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status_code']
+# Import all metrics from our centralized metrics module
+# This follows best practices by keeping all metrics in one place
+from api.metrics import (
+    METRICS_REGISTRY,
+    # Traffic metrics
+    http_requests_total,
+    records_operations_total,
+    # Latency metrics  
+    http_request_duration_seconds,
+    order_processing_duration_seconds,
+    database_operation_duration_seconds,
+    # Error metrics
+    http_errors_total,
+    application_errors_total,
+    database_errors_total,
+    # Saturation metrics
+    active_connections,
+    database_connections_active,
+    task_queue_size,
+    # Business metrics
+    records_inventory_total,
+    sales_revenue_total,
+    customers_active_total,
+    # Helper functions
+    normalize_route,
+    get_error_class
 )
 
-# Latency: Request duration tracking  
-http_request_duration_seconds = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration in seconds',
-    ['method', 'endpoint']
-)
-
-# Errors: Error rate tracking
-http_errors_total = Counter(
-    'http_errors_total', 
-    'Total HTTP errors',
-    ['endpoint', 'error_type']
-)
-
-# Business Logic SLI Examples (extend these for capstone)
-user_actions_total = Counter(
-    'user_actions_total',
-    'Total user actions',
-    ['action_type', 'status']
-)
+# For backward compatibility, create aliases to the old metric names
+# Students can gradually migrate to the new naming convention
+custom_registry = METRICS_REGISTRY
 
 # CAPSTONE TODO: Students should add their own SLI metrics here
 # Examples: login_attempts_total, search_requests_duration, checkout_success_rate, etc.

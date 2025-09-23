@@ -255,19 +255,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.90, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.90, sum(rate(kodekloud_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
           "interval": "",
           "legendFormat": "p90 - {{endpoint}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.95, sum(rate(kodekloud_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
           "interval": "",
           "legendFormat": "p95 - {{endpoint}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.99, sum(rate(kodekloud_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
           "interval": "",
           "legendFormat": "p99 - {{endpoint}}",
           "refId": "C"
@@ -375,7 +375,7 @@
       "pluginVersion": "7.5.7",
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.99, sum(rate(kodekloud_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
           "interval": "",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
@@ -441,7 +441,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(http_request_errors_total[5m])) / sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(kodekloud_http_errors_total[5m])) / sum(rate(kodekloud_http_requests_total[5m]))",
           "interval": "",
           "legendFormat": "Error Rate",
           "refId": "A"
@@ -540,7 +540,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+          "expr": "sum(rate(kodekloud_http_requests_total[5m])) by (route)",
           "interval": "",
           "legendFormat": "{{endpoint}}",
           "refId": "A"

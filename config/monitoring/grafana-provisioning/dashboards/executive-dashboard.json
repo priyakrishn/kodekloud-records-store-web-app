@@ -165,7 +165,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1h])) * 3600",
+          "expr": "sum(rate(kodekloud_http_requests_total{status_code=~\"5..\"}[1h])) * 3600",
           "interval": "",
           "legendFormat": "Errors This Hour",
           "refId": "A"
@@ -313,7 +313,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[1h])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket[1h])) * 1000",
           "interval": "",
           "legendFormat": "Response Time",
           "refId": "A"
@@ -380,7 +380,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[1h])) * 3600",
+          "expr": "sum(rate(kodekloud_http_requests_total[1h])) * 3600",
           "interval": "",
           "legendFormat": "Customers/Hour",
           "refId": "A"
@@ -508,7 +508,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total[6h])) * 21600",
+          "expr": "sum(rate(kodekloud_http_requests_total[6h])) * 21600",
           "interval": "",
           "legendFormat": "Customer Activity (6h)",
           "refId": "A"

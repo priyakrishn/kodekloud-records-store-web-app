@@ -1,13 +1,25 @@
 from fastapi import FastAPI, Request
 from api.routes import router
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 import logging
 import json
 import time
 from api import models  # Ensure models are imported
 from api.database import engine
-from api.telemetry import setup_telemetry, get_tracer
+from api.telemetry import (
+    setup_telemetry, get_tracer,
+    # Import metrics with descriptive names (best practice)
+    http_requests_total,
+    http_request_duration_seconds, 
+    http_errors_total,
+    application_errors_total,
+    active_connections,
+    custom_registry,
+    # Import helper functions for consistent labeling
+    normalize_route,
+    get_error_class,
+)
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -88,42 +100,39 @@ app.include_router(router)
 setup_telemetry()
 
 # Instrument FastAPI and SQLAlchemy AFTER routes are registered
-FastAPIInstrumentor.instrument_app(app)
+# Disable FastAPI's automatic metrics to avoid conflicts
+FastAPIInstrumentor.instrument_app(app, excluded_urls="/metrics")
 SQLAlchemyInstrumentor().instrument(engine=engine)
-
-# Prometheus metrics 
-REQUEST_COUNT = Counter(
-    "http_requests_total", 
-    "Total HTTP Requests",
-    ["method", "endpoint", "status_code"]
-)
-REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds",
-    "HTTP Request Duration in seconds",
-    ["method", "endpoint"],
-    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
-)
-
-ERROR_COUNT = Counter(
-    "http_request_errors_total",
-    "Total HTTP Request Errors",
-    ["method", "endpoint", "error_type"]
-)
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
+    """
+    Middleware to collect Prometheus metrics and OpenTelemetry traces.
+    
+    This middleware demonstrates best practices for observability:
+    1. Normalize routes to avoid high cardinality
+    2. Use consistent error classification
+    3. Correlate metrics with traces
+    4. Proper exception handling
+    """
     start_time = time.time()
     method = request.method
-    endpoint = request.url.path
+    # Use normalized route to avoid high cardinality in metrics
+    route = normalize_route(request.url.path)
+    
+    # Increment active connections gauge
+    active_connections.inc()
     
     # Create explicit span for the request
     tracer = get_tracer(__name__)
     with tracer.start_as_current_span(
-        f"{method} {endpoint}",
+        f"{method} {route}",
         attributes={
             "http.method": method,
             "http.url": str(request.url),
-            "http.route": endpoint
+            "http.route": route,
+            "http.scheme": request.url.scheme,
+            "http.host": request.url.hostname,
         },
     ) as span:
         
@@ -133,51 +142,60 @@ async def metrics_middleware(request: Request, call_next):
             
             # Add response attributes to span
             span.set_attribute("http.status_code", status_code)
+            span.set_attribute("http.response.size", response.headers.get("content-length", 0))
+            
             if status_code >= 400:
                 span.set_status(trace.Status(trace.StatusCode.ERROR))
             
-            # Record request count
-            REQUEST_COUNT.labels(
+            # Calculate request duration
+            duration = time.time() - start_time
+            
+            # Record metrics using best practices
+            # 1. Traffic metric
+            http_requests_total.labels(
                 method=method,
-                endpoint=endpoint,
+                route=route,  # Normalized route, not full path
                 status_code=status_code
             ).inc()
             
-            # Record request duration
-            duration = time.time() - start_time
-            REQUEST_DURATION.labels(
+            # 2. Latency metric
+            http_request_duration_seconds.labels(
                 method=method,
-                endpoint=endpoint
+                route=route
             ).observe(duration)
             
-            # Get the current trace and span ID for logging
+            # Get trace context for logging correlation
             span_context = span.get_span_context()
             trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
             span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
             
-            # Structured logging for each request
+            # Structured logging with trace correlation
             structured_logger.info(
                 "request_processed",
                 method=method,
-                endpoint=endpoint,
+                route=route,
                 status_code=status_code,
+                duration_seconds=duration,
                 duration_ms=round(duration * 1000, 2),
                 trace_id=trace_id,
                 span_id=span_id
             )
             
-            # Track HTTP errors (4xx, 5xx) separately
+            # 3. Error metrics (if applicable)
             if status_code >= 400:
-                ERROR_COUNT.labels(
+                error_class = get_error_class(status_code)
+                http_errors_total.labels(
                     method=method,
-                    endpoint=endpoint,
-                    error_type=f"http_{status_code}"
+                    route=route,
+                    error_code=error_class  # Use error class, not specific status
                 ).inc()
+                
                 structured_logger.error(
                     "http_error",
                     method=method,
-                    endpoint=endpoint,
+                    route=route,
                     status_code=status_code,
+                    error_class=error_class,
                     duration_ms=round(duration * 1000, 2),
                     trace_id=trace_id,
                     span_id=span_id
@@ -186,18 +204,17 @@ async def metrics_middleware(request: Request, call_next):
             return response
             
         except Exception as e:
-            # Set span to error
+            # Set span to error state
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             span.record_exception(e)
             
-            # Record exceptions
-            ERROR_COUNT.labels(
-                method=method,
-                endpoint=endpoint,
-                error_type=type(e).__name__
+            # Record application errors with proper classification
+            application_errors_total.labels(
+                error_type=type(e).__name__,
+                component="middleware"
             ).inc()
             
-            # Get the current trace and span ID for logging
+            # Get trace context for logging
             span_context = span.get_span_context()
             trace_id = format(span_context.trace_id, "032x") if span_context.is_valid else None
             span_id = format(span_context.span_id, "016x") if span_context.is_valid else None
@@ -205,7 +222,7 @@ async def metrics_middleware(request: Request, call_next):
             structured_logger.error(
                 "request_failed",
                 method=method,
-                endpoint=endpoint,
+                route=route,
                 error=str(e),
                 error_type=type(e).__name__,
                 trace_id=trace_id,
@@ -214,6 +231,10 @@ async def metrics_middleware(request: Request, call_next):
             
             # Re-raise the exception
             raise e
+        
+        finally:
+            # Decrement active connections in finally block to ensure it always happens
+            active_connections.dec()
 
 @app.get("/")
 async def root():
@@ -221,7 +242,7 @@ async def root():
 
 @app.get("/metrics")
 async def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(generate_latest(custom_registry), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/health")
 async def health_check():

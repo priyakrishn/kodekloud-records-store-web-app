@@ -15,22 +15,22 @@ sleep 1
 
 # Attempt to get non-existent product to generate 404 error
 echo "Generating 404 error..."
-curl -s http://localhost:8000/api/products/999
+curl -s http://localhost:8000/products/999
 sleep 1
 
 # Generate logs with operations
 echo "Generating logs with operations..."
-curl -s http://localhost:8000/api/products
+curl -s http://localhost:8000/products
 sleep 1
 
 # Create a product
 echo "Creating a product..."
-curl -s http://localhost:8000/api/products -X POST -H "Content-Type: application/json" -d '{"name":"Vinyl Record", "price":19.99}'
+curl -s http://localhost:8000/products -X POST -H "Content-Type: application/json" -d '{"name":"Vinyl Record", "price":19.99}'
 sleep 1
 
 # Create an order
 echo "Creating an order..."
-curl -s http://localhost:8000/api/checkout -X POST -H "Content-Type: application/json" -d '{"product_ids":[1], "customer_email":"test@example.com"}'
+curl -s http://localhost:8000/checkout -X POST -H "Content-Type: application/json" -d '{"product_id":1, "quantity":2}'
 sleep 1
 
 # Generate slow operation with nested spans
@@ -41,8 +41,8 @@ sleep 1
 # Send multiple requests to simulate traffic
 echo "Generating traffic..."
 for i in {1..5}; do
-  curl -s http://localhost:8000/api/products &
-  curl -s http://localhost:8000/api/orders &
+  curl -s http://localhost:8000/products &
+  curl -s http://localhost:8000/orders &
   sleep 0.5
 done
 

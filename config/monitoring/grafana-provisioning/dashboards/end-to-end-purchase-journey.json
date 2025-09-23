@@ -12,15 +12,15 @@
         "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
         "targets": [
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",endpoint=\"/checkout\"}[5m])",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",route=\"/checkout\"}[5m])",
             "legendFormat": "Checkout Requests/sec"
           },
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",endpoint=\"/checkout\",status_code=~\"2..\"}[5m]) / rate(http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",endpoint=\"/checkout\"}[5m]) * 100",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",route=\"/checkout\",status_code=~\"2..\"}[5m]) / rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",method=\"POST\",route=\"/checkout\"}[5m]) * 100",
                           "legendFormat": "Success Rate %"
             },
             {
-              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\"}[5m]))",
+              "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",route=\"/checkout\"}[5m]))",
               "legendFormat": "P95 Latency (s)"
           }
         ],
@@ -45,11 +45,11 @@
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
         "targets": [
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/products\"}[5m])",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/products\"}[5m])",
             "legendFormat": "1. Product Browsing"
           },
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\"}[5m])",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\"}[5m])",
             "legendFormat": "2. Checkout Initiation"
           },
           {
@@ -74,11 +74,11 @@
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
         "targets": [
           {
-            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\"}[5m]))",
+            "expr": "histogram_quantile(0.50, rate(kodekloud_http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",route=\"/checkout\"}[5m]))",
             "legendFormat": "P50 Checkout API"
           },
           {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\"}[5m]))",
+            "expr": "histogram_quantile(0.95, rate(kodekloud_http_request_duration_seconds_bucket{job=\"kodekloud-record-store-api\",route=\"/checkout\"}[5m]))",
             "legendFormat": "P95 Checkout API"
           },
           {
@@ -229,11 +229,11 @@
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
         "targets": [
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/products\",status_code=~\"5..\"}[5m]) / rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/products\"}[5m]) * 100",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/products\",status_code=~\"5..\"}[5m]) / rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/products\"}[5m]) * 100",
             "legendFormat": "Product Browse Errors %"
           },
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\",status_code=~\"[45]..\"}[5m]) / rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\"}[5m]) * 100",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\",status_code=~\"[45]..\"}[5m]) / rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\"}[5m]) * 100",
             "legendFormat": "Checkout Errors %"
           },
           {
@@ -269,15 +269,15 @@
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
         "targets": [
           {
-            "expr": "increase(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\",status_code=\"200\"}[1h])",
+            "expr": "increase(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\",status_code=\"200\"}[1h])",
             "legendFormat": "Orders/Hour"
           },
           {
-            "expr": "sum(increase(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\",status_code=\"200\"}[24h]))",
+            "expr": "sum(increase(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\",status_code=\"200\"}[24h]))",
             "legendFormat": "Daily Orders"
           },
           {
-            "expr": "rate(http_requests_total{job=\"kodekloud-record-store-api\",endpoint=\"/checkout\",status_code=\"200\"}[5m]) * 60",
+            "expr": "rate(kodekloud_http_requests_total{job=\"kodekloud-record-store-api\",route=\"/checkout\",status_code=\"200\"}[5m]) * 60",
             "legendFormat": "Orders/Min"
           }
         ],
