@@ -187,11 +187,11 @@ jobs:
           name: software-bill-of-materials
           path: sbom.json
 
-      # - name: Scan SBOM for Vulnerabilities
-      #   run: |
-      #     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-      #     grype sbom.json --fail-on high
-      #     echo "🔍 SBOM vulnerability scan completed"
+      - name: Scan SBOM for Vulnerabilities
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype sbom.json --fail-on high
+          echo "🔍 SBOM vulnerability scan completed"
 
       - name: Get version from Git commit
         id: get_version
